@@ -17,12 +17,12 @@ esp_err_t sensors_init(void)
 
     esp_err_t ret = DEV_I2C_Set_Slave_Addr(&sht31_dev, SHT31_ADDR);
     if (ret != ESP_OK) {
-        return ESP_FAIL;
+        return ret;
     }
 
     ret = DEV_I2C_Set_Slave_Addr(&tmp117_dev, TMP117_ADDR);
     if (ret != ESP_OK) {
-        return ESP_FAIL;
+        return ret;
     }
 
     return ESP_OK;
