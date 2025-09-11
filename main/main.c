@@ -267,4 +267,6 @@ void app_main() {
 #endif
     lvgl_port_unlock();
   }
+
+  esp_task_wdt_delete(NULL);
 }
