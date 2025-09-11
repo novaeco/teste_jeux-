@@ -22,15 +22,17 @@ const char mount_point[] = MOUNT_POINT;
 
 /**
  * @brief Initialize the SD card and mount the filesystem.
- * 
- * This function configures the SDMMC peripheral, sets up the host and slot, 
- * and mounts the FAT filesystem from the SD card.
- * 
+ *
+ * This function configures the SDMMC peripheral, sets up the host and slot,
+ * and mounts the FAT filesystem from the SD card. The mounting is attempted
+ * multiple times, and each attempt is logged for diagnostic purposes.
+ *
  * @retval ESP_OK if initialization and mounting succeed.
- * @retval ESP_FAIL if an error occurs during the process.
+ * @retval ESP_FAIL if an error occurs during the process after all attempts.
  */
 esp_err_t sd_mmc_init() {
     esp_err_t ret;
+    const int max_attempts = 3;
 
     // Configuration for mounting the FAT filesystem
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
@@ -39,41 +41,59 @@ esp_err_t sd_mmc_init() {
         .allocation_unit_size = 16 * 1024 // Allocation unit size
     };
 
-    ESP_LOGI(SD_TAG, "Initializing SD card");
+    // Attempt to mount the filesystem multiple times
+    for (int attempt = 1; attempt <= max_attempts; ++attempt) {
+        ESP_LOGI(SD_TAG, "Initializing SD card (attempt %d/%d)", attempt, max_attempts);
 
-    // Use the SDMMC peripheral for SD card communication
-    ESP_LOGI(SD_TAG, "Using SDMMC peripheral");
+        // Use the SDMMC peripheral for SD card communication
+        ESP_LOGI(SD_TAG, "Using SDMMC peripheral");
 
-    // Host configuration with default settings for standard-speed operation
-    sdmmc_host_t host = SDMMC_HOST_DEFAULT();
-    host.max_freq_khz = SDMMC_FREQ_DEFAULT;   // 20 MHz
+        // Host configuration with default settings for standard-speed operation
+        sdmmc_host_t host = SDMMC_HOST_DEFAULT();
+        host.max_freq_khz = SDMMC_FREQ_DEFAULT;   // 20 MHz
 
-    // Slot configuration for SDMMC
-    sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
-    slot_config.width = 1;
-    slot_config.clk   = EXAMPLE_PIN_CLK;
-    slot_config.cmd   = EXAMPLE_PIN_CMD;
-    slot_config.d0    = EXAMPLE_PIN_D0;
-    // Enable internal pull-ups on the GPIOs
-    slot_config.flags |= SDMMC_SLOT_FLAG_INTERNAL_PULLUP;
+        // Slot configuration for SDMMC
+        sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
+        slot_config.width = 1;
+        slot_config.clk   = EXAMPLE_PIN_CLK;
+        slot_config.cmd   = EXAMPLE_PIN_CMD;
+        slot_config.d0    = EXAMPLE_PIN_D0;
+        // Enable internal pull-ups on the GPIOs
+        slot_config.flags |= SDMMC_SLOT_FLAG_INTERNAL_PULLUP;
 
-    ESP_LOGI(SD_TAG, "Mounting filesystem");
+        ESP_LOGI(SD_TAG, "Mounting filesystem");
 
-    // Mount the filesystem and initialize the SD card
-    ret = esp_vfs_fat_sdmmc_mount(mount_point, &host, &slot_config, &mount_config, &card);
+        // Mount the filesystem and initialize the SD card
+        ret = esp_vfs_fat_sdmmc_mount(mount_point, &host, &slot_config, &mount_config, &card);
 
-    if (ret != ESP_OK) {
-        if (ret == ESP_FAIL) {
-            ESP_LOGE(SD_TAG, "Failed to mount filesystem. "
-                             "Format the card if mount fails.");
-        } else {
-            ESP_LOGE(SD_TAG, "Failed to initialize the card (%s). "
-                             "Check pull-up resistors on the card lines.", esp_err_to_name(ret));
+        if (ret == ESP_OK) {
+            ESP_LOGI(SD_TAG, "Filesystem mounted on attempt %d", attempt);
+            return ESP_OK;
         }
-        return ESP_FAIL;
+
+        if (ret == ESP_FAIL) {
+            ESP_LOGE(SD_TAG, "Failed to mount filesystem on attempt %d. Format the card if mount fails.", attempt);
+        } else {
+            ESP_LOGE(SD_TAG, "Failed to initialize the card on attempt %d (%s). Check pull-up resistors on the card lines.",
+                     attempt, esp_err_to_name(ret));
+        }
+
+        if (card) {
+            esp_vfs_fat_sdcard_unmount(mount_point, card);
+            card = NULL;
+        } else {
+            sdmmc_host_deinit();
+        }
     }
-    ESP_LOGI(SD_TAG, "Filesystem mounted");
-    return ret;
+
+    ESP_LOGE(SD_TAG, "SD card initialization failed after %d attempts", max_attempts);
+    if (card) {
+        esp_vfs_fat_sdcard_unmount(mount_point, card);
+        card = NULL;
+    } else {
+        sdmmc_host_deinit();
+    }
+    return ESP_FAIL;
 }
 
 /**
