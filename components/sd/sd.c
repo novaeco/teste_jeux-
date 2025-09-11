@@ -102,8 +102,12 @@ esp_err_t sd_mmc_init() {
  * Uses the built-in `sdmmc_card_print_info` function to log information 
  * about the SD card to the standard output.
  */
-void sd_card_print_info() {
+esp_err_t sd_card_print_info() {
+    if (card == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
     sdmmc_card_print_info(stdout, card);
+    return ESP_OK;
 }
 
 /**
@@ -116,7 +120,12 @@ void sd_card_print_info() {
  * @retval ESP_FAIL if an error occurs.
  */
 esp_err_t sd_mmc_unmount() {
-    return esp_vfs_fat_sdcard_unmount(mount_point, card);
+    if (card == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    esp_err_t ret = esp_vfs_fat_sdcard_unmount(mount_point, card);
+    card = NULL;
+    return ret;
 }
 
 /**
