@@ -33,8 +33,11 @@ esp_err_t IO_EXTENSION_IO_Mode(uint8_t pin)
     }
     uint8_t data[2] = {IO_EXTENSION_Mode, pin}; // Prepare the data to write to the mode register
     // Write the 8-bit value to the IO mode register
-    DEV_I2C_Write_Nbyte(IO_EXTENSION.addr, data, 2);
-    return ESP_OK;
+    esp_err_t ret = DEV_I2C_Write_Nbyte(IO_EXTENSION.addr, data, 2);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set IO mode: %s", esp_err_to_name(ret));
+    }
+    return ret;
 }
 
 /**
@@ -88,8 +91,11 @@ esp_err_t IO_EXTENSION_Output(uint8_t pin, uint8_t value)
 
     uint8_t data[2] = {IO_EXTENSION_IO_OUTPUT_ADDR, IO_EXTENSION.Last_io_value}; // Prepare the data to write to the output register
     // Write the 8-bit value to the IO output register
-    DEV_I2C_Write_Nbyte(IO_EXTENSION.addr, data, 2);
-    return ESP_OK;
+    esp_err_t ret = DEV_I2C_Write_Nbyte(IO_EXTENSION.addr, data, 2);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to write IO output: %s", esp_err_to_name(ret));
+    }
+    return ret;
 }
 
 /**
@@ -113,7 +119,11 @@ esp_err_t IO_EXTENSION_Input(uint8_t pin, uint8_t *value)
     uint8_t read_val = 0;
 
     // Read the value of the input pins
-    DEV_I2C_Read_Nbyte(IO_EXTENSION.addr, IO_EXTENSION_IO_INPUT_ADDR, &read_val, 1);
+    esp_err_t ret = DEV_I2C_Read_Nbyte(IO_EXTENSION.addr, IO_EXTENSION_IO_INPUT_ADDR, &read_val, 1);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to read IO input: %s", esp_err_to_name(ret));
+        return ret;
+    }
     // Return the value of the specific pin(s) by masking with the provided bit mask
     *value = ((read_val & (1 << pin)) > 0);
     return ESP_OK;
@@ -143,8 +153,11 @@ esp_err_t IO_EXTENSION_Pwm_Output(uint8_t Value)
     // Calculate the duty cycle based on the resolution (12 bits)
     data[1] = Value * (255 / 100.0);
     // Write the 8-bit value to the PWM output register
-    DEV_I2C_Write_Nbyte(IO_EXTENSION.addr, data, 2);
-    return ESP_OK;
+    esp_err_t ret = DEV_I2C_Write_Nbyte(IO_EXTENSION.addr, data, 2);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set PWM output: %s", esp_err_to_name(ret));
+    }
+    return ret;
 }
 
 /**
@@ -164,6 +177,9 @@ esp_err_t IO_EXTENSION_Adc_Input(uint16_t *value)
         return ESP_ERR_INVALID_STATE;
     }
     // Read the ADC input value from the IO_EXTENSION device
-    *value = DEV_I2C_Read_Word(IO_EXTENSION.addr, IO_EXTENSION_ADC_ADDR);
-    return ESP_OK;
+    esp_err_t ret = DEV_I2C_Read_Word(IO_EXTENSION.addr, IO_EXTENSION_ADC_ADDR, value);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to read ADC input: %s", esp_err_to_name(ret));
+    }
+    return ret;
 }

@@ -80,10 +80,14 @@ esp_err_t DEV_I2C_Set_Slave_Addr(i2c_master_dev_handle_t *dev_handle, uint8_t Ad
  * @param Cmd The command byte to send.
  * @param value The value byte to send.
  */
-void DEV_I2C_Write_Byte(i2c_master_dev_handle_t dev_handle, uint8_t Cmd, uint8_t value)
+esp_err_t DEV_I2C_Write_Byte(i2c_master_dev_handle_t dev_handle, uint8_t Cmd, uint8_t value)
 {
     uint8_t data[2] = {Cmd, value};  // Create an array with command and value
-    ESP_ERROR_CHECK(i2c_master_transmit(dev_handle, data, sizeof(data), 100));  // Send the data to the device
+    esp_err_t ret = i2c_master_transmit(dev_handle, data, sizeof(data), 100);  // Send the data to the device
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "I2C write byte failed: %s", esp_err_to_name(ret));
+    }
+    return ret;
 }
 
 /**
@@ -94,11 +98,16 @@ void DEV_I2C_Write_Byte(i2c_master_dev_handle_t dev_handle, uint8_t Cmd, uint8_t
  * @param dev_handle The handle to the I2C device.
  * @return The byte read from the device.
  */
-uint8_t DEV_I2C_Read_Byte(i2c_master_dev_handle_t dev_handle)
+esp_err_t DEV_I2C_Read_Byte(i2c_master_dev_handle_t dev_handle, uint8_t *value)
 {
-    uint8_t data[1] = {0};  // Create a buffer to store the received byte
-    ESP_ERROR_CHECK(i2c_master_receive(dev_handle, data, 1, 100));  // Read a byte from the device
-    return data[0];  // Return the received byte
+    if (value == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    esp_err_t ret = i2c_master_receive(dev_handle, value, 1, 100);  // Read a byte from the device
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "I2C read byte failed: %s", esp_err_to_name(ret));
+    }
+    return ret;  // Return status
 }
 
 /**
@@ -111,11 +120,19 @@ uint8_t DEV_I2C_Read_Byte(i2c_master_dev_handle_t dev_handle)
  * @param Cmd The command byte to send.
  * @return The word read from the device (combined two bytes).
  */
-uint16_t DEV_I2C_Read_Word(i2c_master_dev_handle_t dev_handle, uint8_t Cmd)
+esp_err_t DEV_I2C_Read_Word(i2c_master_dev_handle_t dev_handle, uint8_t Cmd, uint16_t *value)
 {
+    if (value == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
     uint8_t data[2] = {Cmd};  // Create an array with the command byte
-    ESP_ERROR_CHECK(i2c_master_transmit_receive(dev_handle, data, 1, data, 2, 100));  // Send command and receive two bytes
-    return data[1] << 8 | data[0];  // Combine the two bytes into a word (16-bit)
+    esp_err_t ret = i2c_master_transmit_receive(dev_handle, data, 1, data, 2, 100);  // Send command and receive two bytes
+    if (ret == ESP_OK) {
+        *value = (data[1] << 8) | data[0];  // Combine the two bytes into a word (16-bit)
+    } else {
+        ESP_LOGE(TAG, "I2C read word failed: %s", esp_err_to_name(ret));
+    }
+    return ret;
 }
 
 /**
@@ -127,9 +144,13 @@ uint16_t DEV_I2C_Read_Word(i2c_master_dev_handle_t dev_handle, uint8_t Cmd)
  * @param pdata Pointer to the data to send.
  * @param len The number of bytes to send.
  */
-void DEV_I2C_Write_Nbyte(i2c_master_dev_handle_t dev_handle, uint8_t *pdata, uint8_t len)
+esp_err_t DEV_I2C_Write_Nbyte(i2c_master_dev_handle_t dev_handle, uint8_t *pdata, uint8_t len)
 {
-    ESP_ERROR_CHECK(i2c_master_transmit(dev_handle, pdata, len, 100));  // Transmit the data block
+    esp_err_t ret = i2c_master_transmit(dev_handle, pdata, len, 100);  // Transmit the data block
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "I2C write %d bytes failed: %s", len, esp_err_to_name(ret));
+    }
+    return ret;
 }
 
 /**
@@ -143,7 +164,11 @@ void DEV_I2C_Write_Nbyte(i2c_master_dev_handle_t dev_handle, uint8_t *pdata, uin
  * @param pdata Pointer to the buffer where received data will be stored.
  * @param len The number of bytes to read.
  */
-void DEV_I2C_Read_Nbyte(i2c_master_dev_handle_t dev_handle, uint8_t Cmd, uint8_t *pdata, uint8_t len)
+esp_err_t DEV_I2C_Read_Nbyte(i2c_master_dev_handle_t dev_handle, uint8_t Cmd, uint8_t *pdata, uint8_t len)
 {
-    ESP_ERROR_CHECK(i2c_master_transmit_receive(dev_handle, &Cmd, 1, pdata, len, 100));  // Send command and receive data
+    esp_err_t ret = i2c_master_transmit_receive(dev_handle, &Cmd, 1, pdata, len, 100);  // Send command and receive data
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "I2C read %d bytes failed: %s", len, esp_err_to_name(ret));
+    }
+    return ret;
 }
