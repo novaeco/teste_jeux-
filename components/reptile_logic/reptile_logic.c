@@ -1,0 +1,145 @@
+#include "reptile_logic.h"
+#include "nvs_flash.h"
+#include "nvs.h"
+#include "gpio.h"
+#include "sensors.h"
+
+#define NVS_NAMESPACE "reptile"
+
+void reptile_init(reptile_t *r)
+{
+    if (!r) {
+        return;
+    }
+
+    sensors_init();
+
+    r->faim        = 100;
+    r->eau         = 100;
+    r->temperature = 30;
+    r->humeur      = 100;
+    r->event       = REPTILE_EVENT_NONE;
+    r->last_update = time(NULL);
+}
+
+void reptile_update(reptile_t *r, uint32_t elapsed_ms)
+{
+    if (!r) {
+        return;
+    }
+
+    uint32_t decay = elapsed_ms / 1000U; /* 1 point per second */
+
+    r->faim        = (r->faim > decay) ? (r->faim - decay) : 0;
+    r->eau         = (r->eau > decay) ? (r->eau - decay) : 0;
+    r->humeur      = (r->humeur > decay) ? (r->humeur - decay) : 0;
+
+    float temp = sensors_read_temperature();
+    r->temperature = (uint32_t)temp;
+
+    r->last_update += (time_t)decay;
+}
+
+esp_err_t reptile_save(reptile_t *r)
+{
+    if (!r) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    nvs_handle_t handle;
+    esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &handle);
+    if (err != ESP_OK) {
+        return err;
+    }
+    err = nvs_set_blob(handle, "state", r, sizeof(reptile_t));
+    if (err == ESP_OK) {
+        err = nvs_commit(handle);
+    }
+    nvs_close(handle);
+    return err;
+}
+
+esp_err_t reptile_load(reptile_t *r)
+{
+    if (!r) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    nvs_handle_t handle;
+    esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READONLY, &handle);
+    if (err != ESP_OK) {
+        return err;
+    }
+    size_t size = sizeof(reptile_t);
+    err = nvs_get_blob(handle, "state", r, &size);
+    nvs_close(handle);
+    return err;
+}
+
+void reptile_feed(reptile_t *r)
+{
+    if (!r) {
+        return;
+    }
+    r->faim = (r->faim + 10 > 100) ? 100 : r->faim + 10;
+    /* Physically pulse the feeder servo */
+    reptile_feed_gpio();
+    reptile_save(r);
+}
+
+void reptile_give_water(reptile_t *r)
+{
+    if (!r) {
+        return;
+    }
+    r->eau = (r->eau + 10 > 100) ? 100 : r->eau + 10;
+    /* Activate the water pump */
+    reptile_water_gpio();
+    reptile_save(r);
+}
+
+void reptile_heat(reptile_t *r)
+{
+    if (!r) {
+        return;
+    }
+    r->temperature = (r->temperature + 5 > 50) ? 50 : r->temperature + 5;
+    /* Drive the heating resistor */
+    reptile_heat_gpio();
+    reptile_save(r);
+}
+
+void reptile_soothe(reptile_t *r)
+{
+    if (!r) {
+        return;
+    }
+    /* Petting the reptile improves its mood */
+    r->humeur = (r->humeur + 10 > 100) ? 100 : r->humeur + 10;
+    reptile_save(r);
+}
+
+reptile_event_t reptile_check_events(reptile_t *r)
+{
+    if (!r) {
+        return REPTILE_EVENT_NONE;
+    }
+
+    reptile_event_t evt = REPTILE_EVENT_NONE;
+
+    if (r->faim <= REPTILE_FAMINE_THRESHOLD ||
+        r->eau <= REPTILE_EAU_THRESHOLD ||
+        r->temperature <= REPTILE_TEMP_THRESHOLD_LOW ||
+        r->temperature >= REPTILE_TEMP_THRESHOLD_HIGH ||
+        r->humeur <= REPTILE_HUMEUR_THRESHOLD) {
+        evt = REPTILE_EVENT_MALADIE;
+    } else if (r->faim >= 90 && r->eau >= 90 && r->humeur >= 90 &&
+               r->temperature > REPTILE_TEMP_THRESHOLD_LOW &&
+               r->temperature < REPTILE_TEMP_THRESHOLD_HIGH) {
+        evt = REPTILE_EVENT_CROISSANCE;
+    }
+
+    if (evt != r->event) {
+        r->event = evt;
+    }
+
+    return evt;
+}
