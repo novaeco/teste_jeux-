@@ -50,7 +50,7 @@ esp_err_t sd_mmc_init() {
 
         // Host configuration with default settings for standard-speed operation
         sdmmc_host_t host = SDMMC_HOST_DEFAULT();
-        host.max_freq_khz = SDMMC_FREQ_DEFAULT;   // 20 MHz
+        host.max_freq_khz = SDMMC_FREQ_PROBING;   // Start at low freq for marginal cards; increase after successful mount
 
         // Slot configuration for SDMMC
         sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
