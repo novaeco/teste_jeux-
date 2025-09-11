@@ -1,10 +1,10 @@
-#include <inttypes.h>
-#include <stdbool.h>
 #include "reptile_game.h"
+#include "can.h"
 #include "image.h"
 #include "lvgl_port.h"
-#include "can.h"
 #include "sleep.h"
+#include <inttypes.h>
+#include <stdbool.h>
 
 LV_FONT_DECLARE(lv_font_montserrat_24);
 
@@ -60,8 +60,15 @@ static void show_action_sprite(action_type_t action);
 static void revert_sprite_cb(lv_timer_t *t);
 
 void reptile_game_init(void) {
-  reptile_init(&reptile);
+  esp_err_t err = reptile_init(&reptile);
   last_tick = lv_tick_get();
+  if (err != ESP_OK) {
+    lv_obj_t *mbox = lv_msgbox_create(NULL);
+    lv_msgbox_add_title(mbox, "Erreur");
+    lv_msgbox_add_text(mbox, "Capteurs non initialisés");
+    lv_msgbox_add_close_button(mbox);
+    lv_obj_center(mbox);
+  }
   if (reptile_load(&reptile) != ESP_OK) {
     reptile_save(&reptile);
   }
@@ -192,8 +199,10 @@ void reptile_tick(lv_timer_t *timer) {
     reptile_update(&reptile, elapsed);
     if (soothe_time_ms > 0) {
       uint32_t inc = sec * 2U;
-      reptile.humeur = (reptile.humeur + inc > 100) ? 100 : reptile.humeur + inc;
-      soothe_time_ms = (soothe_time_ms > elapsed) ? (soothe_time_ms - elapsed) : 0;
+      reptile.humeur =
+          (reptile.humeur + inc > 100) ? 100 : reptile.humeur + inc;
+      soothe_time_ms =
+          (soothe_time_ms > elapsed) ? (soothe_time_ms - elapsed) : 0;
     }
     reptile_event_t prev_evt = reptile.event;
     reptile_event_t evt = reptile_check_events(&reptile);
@@ -297,8 +306,7 @@ static void ui_update_stats(void) {
   lv_label_set_text_fmt(label_stat_eau, "Eau: %" PRIu32, reptile.eau);
   lv_label_set_text_fmt(label_stat_temp, "Température: %" PRIu32,
                         reptile.temperature);
-  lv_label_set_text_fmt(label_stat_humeur, "Humeur: %" PRIu32,
-                        reptile.humeur);
+  lv_label_set_text_fmt(label_stat_humeur, "Humeur: %" PRIu32, reptile.humeur);
   set_bar_color(bar_faim, reptile.faim, 100);
   set_bar_color(bar_eau, reptile.eau, 100);
   set_bar_color(bar_temp, reptile.temperature, 50);
