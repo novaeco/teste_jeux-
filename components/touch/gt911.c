@@ -380,13 +380,21 @@ esp_lcd_touch_handle_t touch_gt911_init()
         return NULL;
     }
     DEV_GPIO_Mode(EXAMPLE_PIN_NUM_TOUCH_INT, GPIO_MODE_INPUT_OUTPUT);  // Set GPIO pin mode for interrupt
-    IO_EXTENSION_Output(IO_EXTENSION_IO_1, 0);  // Set GPIO for backlight control to low (off)
+    esp_err_t io_ret2 = IO_EXTENSION_Output(IO_EXTENSION_IO_1, 0);  // Set GPIO for backlight control to low (off)
+    if (io_ret2 != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set IO1 low: %s", esp_err_to_name(io_ret2));
+        return NULL;
+    }
     
     vTaskDelay(pdMS_TO_TICKS(100));  // Wait for 100ms
     DEV_Digital_Write(EXAMPLE_PIN_NUM_TOUCH_INT, 0);  // Set interrupt pin low (disable interrupt)
     
     vTaskDelay(pdMS_TO_TICKS(100));  // Wait for another 100ms
-    IO_EXTENSION_Output(IO_EXTENSION_IO_1, 1);  // Set GPIO for backlight control to high (on)
+    io_ret2 = IO_EXTENSION_Output(IO_EXTENSION_IO_1, 1);  // Set GPIO for backlight control to high (on)
+    if (io_ret2 != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set IO1 high: %s", esp_err_to_name(io_ret2));
+        return NULL;
+    }
     
     vTaskDelay(pdMS_TO_TICKS(200));  // Wait for 200ms to ensure the touch controller is ready
 
