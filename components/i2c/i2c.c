@@ -20,10 +20,12 @@ DEV_I2C_Port handle;
 /**
  * @brief Initialize the I2C master interface.
  *
- * This function configures the I2C master bus and adds a device to it.
- * The I2C clock source, frequency, SCL/SDA pins, and other settings are configured here.
+ * This function configures the I2C master bus. A device is not added during
+ * initialization because the device address may vary per peripheral. A device
+ * can later be attached with ::DEV_I2C_Set_Slave_Addr.
  *
- * @return The device handle if initialization is successful, NULL otherwise.
+ * @return The device handle containing the bus; the device handle will be NULL
+ *         until a slave address is configured.
  */
 DEV_I2C_Port DEV_I2C_Init()
 {
@@ -39,18 +41,10 @@ DEV_I2C_Port DEV_I2C_Init()
     // Create a new I2C master bus with the above configuration
     ESP_ERROR_CHECK(i2c_new_master_bus(&i2c_bus_config, &handle.bus));
     
-    // Configure the device's I2C parameters
-    i2c_device_config_t i2c_dev_conf = {
-        .scl_speed_hz = EXAMPLE_I2C_MASTER_FREQUENCY,  // Set I2C communication speed
-    };
-    
-    // Add the I2C device to the bus
-    // i2c_master_dev_handle_t dev_handle = NULL;
-    if (i2c_master_bus_add_device(handle.bus, &i2c_dev_conf, &handle.dev) != ESP_OK) {
-        ESP_LOGE(TAG, "I2C device creation failed");  // Log error if device creation fails
-    }
+    // No device is added here; handle.dev remains NULL until configured
+    handle.dev = NULL;
 
-    return handle;  // Return the device handle if successful
+    return handle;  // Return the bus handle; device handle will be assigned later
 }
 
 /**
