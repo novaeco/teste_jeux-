@@ -65,12 +65,15 @@ esp_err_t esp_lcd_touch_new_i2c_gt911(const esp_lcd_panel_io_handle_t io, const 
 /**
  * @brief Initialize the GT911 touch controller
  *
- * This function initializes the GT911 touch controller by configuring the I2C 
+ * This function initializes the GT911 touch controller by configuring the I2C
  * interface and touch settings.
  *
- * @return Touch handle for the initialized controller
+ * @param[out] out_handle Touch handle for the initialized controller
+ * @return
+ *      - ESP_OK: successfully initialized
+ *      - others: error from underlying drivers
  */
-esp_lcd_touch_handle_t touch_gt911_init();
+esp_err_t touch_gt911_init(esp_lcd_touch_handle_t *out_handle);
 
 /**
  * @brief Read touch points from the GT911 touch controller
