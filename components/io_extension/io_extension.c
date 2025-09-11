@@ -55,6 +55,11 @@ esp_err_t IO_EXTENSION_Init()
         return ret;
     }
 
+    if (IO_EXTENSION.addr == NULL) {
+        ESP_LOGE(TAG, "IO_EXTENSION address is NULL");
+        return ESP_ERR_INVALID_STATE;
+    }
+
     ret = IO_EXTENSION_IO_Mode(0xff); // Set all pins to output mode
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to set IO mode: %s", esp_err_to_name(ret));
