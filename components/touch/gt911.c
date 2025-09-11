@@ -372,6 +372,9 @@ esp_err_t touch_gt911_init(esp_lcd_touch_handle_t *out_handle)
         return ESP_ERR_INVALID_ARG;
     }
 
+    *out_handle = NULL;
+    s_tp_handle = NULL;
+
     esp_lcd_panel_io_handle_t tp_io_handle = NULL;  // Declare a handle for touch panel I/O
     // Configure the I2C communication settings for the GT911 touch controller
     const esp_lcd_panel_io_i2c_config_t tp_io_config = ESP_LCD_TOUCH_IO_I2C_GT911_CONFIG();
