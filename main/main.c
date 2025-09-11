@@ -88,6 +88,8 @@ static void wait_for_sd_card(void) {
   int attempts = 0;
   const int max_attempts = 10;
 
+  ESP_ERROR_CHECK(esp_task_wdt_add(NULL));
+
   while (true) {
     esp_task_wdt_reset();
     err = sd_mmc_init();
@@ -196,7 +198,6 @@ cleanup:
 void app_main() {
   esp_reset_reason_t rr = esp_reset_reason();
   ESP_LOGI(TAG, "Reset reason: %d", rr);
-  ESP_ERROR_CHECK(esp_task_wdt_add(NULL));
 
   // Initialize NVS flash storage with error handling for page issues
   esp_err_t ret = nvs_flash_init();
