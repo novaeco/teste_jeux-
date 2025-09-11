@@ -2,6 +2,7 @@
 #define REPTILE_LOGIC_H
 
 #include "esp_err.h"
+#include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
 
@@ -41,6 +42,7 @@ void reptile_give_water(reptile_t *r);
 void reptile_heat(reptile_t *r);
 void reptile_soothe(reptile_t *r);
 reptile_event_t reptile_check_events(reptile_t *r);
+bool reptile_sensors_available(void);
 
 #ifdef __cplusplus
 }
