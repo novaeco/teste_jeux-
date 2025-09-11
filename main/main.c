@@ -59,7 +59,6 @@ void sleep_set_enabled(bool enabled) {
 bool sleep_is_enabled(void) { return sleep_enabled; }
 
 static void show_error_screen(const char *msg) {
-  esp_task_wdt_reset();
   if (!lvgl_port_lock(-1))
     return;
   if (!error_screen) {
@@ -197,6 +196,7 @@ cleanup:
 void app_main() {
   esp_reset_reason_t rr = esp_reset_reason();
   ESP_LOGI(TAG, "Reset reason: %d", rr);
+  ESP_ERROR_CHECK(esp_task_wdt_add(NULL));
 
   // Initialize NVS flash storage with error handling for page issues
   esp_err_t ret = nvs_flash_init();
