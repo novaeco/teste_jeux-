@@ -2,6 +2,7 @@
 #include "i2c.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include <math.h>
 
 #define SHT31_ADDR 0x44
 #define TMP117_ADDR 0x48
@@ -13,13 +14,26 @@ esp_err_t sensors_init(void)
 {
     DEV_I2C_Port port = DEV_I2C_Init();
     (void)port; // bus handle kept internally
-    DEV_I2C_Set_Slave_Addr(&sht31_dev, SHT31_ADDR);
-    DEV_I2C_Set_Slave_Addr(&tmp117_dev, TMP117_ADDR);
+
+    esp_err_t ret = DEV_I2C_Set_Slave_Addr(&sht31_dev, SHT31_ADDR);
+    if (ret != ESP_OK) {
+        return ESP_FAIL;
+    }
+
+    ret = DEV_I2C_Set_Slave_Addr(&tmp117_dev, TMP117_ADDR);
+    if (ret != ESP_OK) {
+        return ESP_FAIL;
+    }
+
     return ESP_OK;
 }
 
 float sensors_read_temperature(void)
 {
+    if (tmp117_dev == NULL || sht31_dev == NULL) {
+        return NAN;
+    }
+
     uint16_t raw_tmp = DEV_I2C_Read_Word(tmp117_dev, 0x00);
     float tmp117 = (int16_t)raw_tmp * 0.0078125f;
 
@@ -36,6 +50,10 @@ float sensors_read_temperature(void)
 
 float sensors_read_humidity(void)
 {
+    if (sht31_dev == NULL) {
+        return NAN;
+    }
+
     uint8_t cmd[2] = {0x2C, 0x06};
     DEV_I2C_Write_Nbyte(sht31_dev, cmd, 2);
     vTaskDelay(pdMS_TO_TICKS(15));
