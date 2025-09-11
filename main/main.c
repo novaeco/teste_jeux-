@@ -78,6 +78,8 @@ static void reptile_real_start(esp_lcd_panel_handle_t panel,
   lv_obj_center(mbox);
 }
 
+static void sleep_timer_cb(lv_timer_t *timer);
+
 static void start_game_mode(void) {
   reptile_game_start(panel_handle, tp_handle);
   logging_init(reptile_get_state);
