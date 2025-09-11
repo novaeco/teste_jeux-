@@ -54,11 +54,14 @@ esp_err_t sd_mmc_unmount();
 
 /**
  * @brief Print detailed information about the SD card.
- * 
- * This function uses `sdmmc_card_print_info` to display SD card details such 
+ *
+ * This function uses `sdmmc_card_print_info` to display SD card details such
  * as manufacturer, type, size, and more.
+ *
+ * @retval ESP_OK if the information is printed successfully.
+ * @retval ESP_ERR_INVALID_STATE if no card is mounted.
  */
-void sd_card_print_info();
+esp_err_t sd_card_print_info();
 
 /**
  * @brief Get total and available memory capacity of the SD card.
