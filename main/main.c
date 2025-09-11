@@ -18,7 +18,9 @@
 #include "driver/gpio.h" // GPIO definitions for wake-up source
 #include "driver/ledc.h" // LEDC for backlight PWM
 #include "esp_lcd_panel_ops.h"
-#include "esp_sleep.h" // Light-sleep configuration
+#include "esp_sleep.h"    // Light-sleep configuration
+#include "esp_system.h"   // Reset reason API
+#include "esp_task_wdt.h" // Watchdog timer API
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "gpio.h" // Custom GPIO wrappers for reptile control
@@ -26,12 +28,11 @@
 #include "lv_demos.h" // LVGL demo headers
 #include "lvgl.h"
 #include "lvgl_port.h"    // LVGL porting functions for integration
+#include "nvs.h"          // NVS key-value API
 #include "nvs_flash.h"    // NVS flash for persistent storage
 #include "reptile_game.h" // Reptile game interface
 #include "sd.h"
-#include "esp_task_wdt.h" // Watchdog timer API
-#include "esp_system.h"   // Reset reason API
-#include "sleep.h"       // Sleep control interface
+#include "sleep.h" // Sleep control interface
 
 static const char *TAG = "main"; // Tag for logging
 
@@ -42,6 +43,70 @@ static esp_lcd_panel_handle_t panel_handle = NULL;
 static esp_lcd_touch_handle_t tp_handle = NULL;
 static lv_obj_t *error_screen;
 static lv_obj_t *prev_screen;
+
+enum {
+  APP_MODE_GAME = 1,
+  APP_MODE_REAL = 2,
+  APP_MODE_SETTINGS = 3,
+};
+
+static void save_last_mode(uint8_t mode) {
+  nvs_handle_t nvs;
+  if (nvs_open("cfg", NVS_READWRITE, &nvs) == ESP_OK) {
+    nvs_set_u8(nvs, "last_mode", mode);
+    nvs_commit(nvs);
+    nvs_close(nvs);
+  }
+}
+
+static void settings_screen_show(void) {
+  lv_obj_t *mbox = lv_msgbox_create(NULL);
+  lv_msgbox_add_title(mbox, "Param\u00e8tres");
+  lv_msgbox_add_text(mbox, "Interface de configuration à impl\u00e9menter");
+  lv_msgbox_add_close_button(mbox);
+  lv_obj_center(mbox);
+}
+
+static void reptile_real_start(esp_lcd_panel_handle_t panel,
+                               esp_lcd_touch_handle_t tp) {
+  (void)panel;
+  (void)tp;
+  lv_obj_t *mbox = lv_msgbox_create(NULL);
+  lv_msgbox_add_title(mbox, "Mode r\u00e9el");
+  lv_msgbox_add_text(mbox, "Mode r\u00e9el non impl\u00e9ment\u00e9");
+  lv_msgbox_add_close_button(mbox);
+  lv_obj_center(mbox);
+}
+
+static void start_game_mode(void) {
+  reptile_game_start(panel_handle, tp_handle);
+  logging_init(reptile_get_state);
+  if (!sleep_timer)
+    sleep_timer = lv_timer_create(sleep_timer_cb, 120000, NULL);
+#ifdef CONFIG_REPTILE_DEBUG
+  sleep_set_enabled(false);
+#else
+  sleep_set_enabled(true);
+#endif
+}
+
+static void menu_btn_game_cb(lv_event_t *e) {
+  (void)e;
+  save_last_mode(APP_MODE_GAME);
+  start_game_mode();
+}
+
+static void menu_btn_real_cb(lv_event_t *e) {
+  (void)e;
+  save_last_mode(APP_MODE_REAL);
+  reptile_real_start(panel_handle, tp_handle);
+}
+
+static void menu_btn_settings_cb(lv_event_t *e) {
+  (void)e;
+  save_last_mode(APP_MODE_SETTINGS);
+  settings_screen_show();
+}
 
 void sleep_set_enabled(bool enabled) {
   sleep_enabled = enabled;
@@ -98,8 +163,7 @@ static void wait_for_sd_card(void) {
       return;
     }
 
-    ESP_LOGE(TAG, "Carte SD absente ou illisible (%s)",
-             esp_err_to_name(err));
+    ESP_LOGE(TAG, "Carte SD absente ou illisible (%s)", esp_err_to_name(err));
     show_error_screen("Insérer une carte SD valide");
     vTaskDelay(pdMS_TO_TICKS(500));
     if (++attempts >= max_attempts) {
@@ -165,9 +229,11 @@ static void sleep_timer_cb(lv_timer_t *timer) {
     ESP_LOGE(TAG, "D\u00e9montage SD: %s", esp_err_to_name(err));
     goto cleanup;
   }
-  // Use ANY_LOW to ensure compatibility with ESP32-S3 and avoid deprecated ALL_LOW
+  // Use ANY_LOW to ensure compatibility with ESP32-S3 and avoid deprecated
+  // ALL_LOW
   esp_sleep_enable_ext1_wakeup((1ULL << GPIO_NUM_4), ESP_EXT1_WAKEUP_ANY_LOW);
-  gpio_pulldown_en(GPIO_NUM_4); // ensure defined level; use external pull-up if needed
+  gpio_pulldown_en(
+      GPIO_NUM_4); // ensure defined level; use external pull-up if needed
   esp_light_sleep_start();
   cause = esp_sleep_get_wakeup_cause();
   ESP_LOGI(TAG, "Wakeup cause: %d", cause);
@@ -254,18 +320,56 @@ void app_main() {
 
   // Lock the mutex because LVGL APIs are not thread-safe
   if (lvgl_port_lock(-1)) {
-    // Uncomment and run the desired demo functions here
-    // lv_demo_stress();  // Stress test demo
-    // lv_demo_benchmark(); // Benchmark demo
-    // lv_demo_music();     // Music demo
-    reptile_game_start(panel_handle, tp_handle); // Launch reptile game
-    logging_init(reptile_get_state);
-    sleep_timer = lv_timer_create(sleep_timer_cb, 120000, NULL);
-#ifdef CONFIG_REPTILE_DEBUG
-    sleep_set_enabled(false);   // mode débogage
-#else
-    sleep_set_enabled(true);    // mode production
-#endif
+    // Create main menu screen
+    lv_obj_t *menu_screen = lv_obj_create(NULL);
+
+    lv_obj_t *btn_game = lv_btn_create(menu_screen);
+    lv_obj_set_size(btn_game, 200, 50);
+    lv_obj_align(btn_game, LV_ALIGN_CENTER, 0, -60);
+    lv_obj_add_event_cb(btn_game, menu_btn_game_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_t *label = lv_label_create(btn_game);
+    lv_label_set_text(label, "Mode Jeu");
+    lv_obj_center(label);
+
+    lv_obj_t *btn_real = lv_btn_create(menu_screen);
+    lv_obj_set_size(btn_real, 200, 50);
+    lv_obj_align(btn_real, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_add_event_cb(btn_real, menu_btn_real_cb, LV_EVENT_CLICKED, NULL);
+    label = lv_label_create(btn_real);
+    lv_label_set_text(label, "Mode R\u00e9el");
+    lv_obj_center(label);
+
+    lv_obj_t *btn_settings = lv_btn_create(menu_screen);
+    lv_obj_set_size(btn_settings, 200, 50);
+    lv_obj_align(btn_settings, LV_ALIGN_CENTER, 0, 60);
+    lv_obj_add_event_cb(btn_settings, menu_btn_settings_cb, LV_EVENT_CLICKED,
+                        NULL);
+    label = lv_label_create(btn_settings);
+    lv_label_set_text(label, "Param\u00e8tres");
+    lv_obj_center(label);
+
+    uint8_t last_mode = 0;
+    nvs_handle_t nvs;
+    if (nvs_open("cfg", NVS_READWRITE, &nvs) == ESP_OK) {
+      nvs_get_u8(nvs, "last_mode", &last_mode);
+      nvs_close(nvs);
+    }
+
+    switch (last_mode) {
+    case APP_MODE_GAME:
+      start_game_mode();
+      break;
+    case APP_MODE_REAL:
+      reptile_real_start(panel_handle, tp_handle);
+      break;
+    case APP_MODE_SETTINGS:
+      settings_screen_show();
+      break;
+    default:
+      lv_scr_load(menu_screen);
+      break;
+    }
+
     lvgl_port_unlock();
   }
 
