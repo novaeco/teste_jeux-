@@ -61,18 +61,20 @@ DEV_I2C_Port DEV_I2C_Init()
  * @param dev_handle The handle to the I2C device.
  * @param Addr The new I2C address for the device.
  */
-void DEV_I2C_Set_Slave_Addr(i2c_master_dev_handle_t *dev_handle, uint8_t Addr)
+esp_err_t DEV_I2C_Set_Slave_Addr(i2c_master_dev_handle_t *dev_handle, uint8_t Addr)
 {
     // Configure the new device address
     i2c_device_config_t i2c_dev_conf = {
         .scl_speed_hz = EXAMPLE_I2C_MASTER_FREQUENCY,  // I2C frequency
         .device_address = Addr,                        // Set new device address
     };
-    
-    // Update the device with the new address
-    if (i2c_master_bus_add_device(handle.bus, &i2c_dev_conf, dev_handle) != ESP_OK) {
+
+    // Update the device with the new address and return status
+    esp_err_t ret = i2c_master_bus_add_device(handle.bus, &i2c_dev_conf, dev_handle);
+    if (ret != ESP_OK) {
         ESP_LOGE(TAG, "I2C address modification failed");  // Log error if address modification fails
     }
+    return ret;
 }
 
 /**

@@ -55,7 +55,7 @@ DEV_I2C_Port DEV_I2C_Init();
  * @param dev_handle The handle to the I2C device.
  * @param Addr The new I2C address to set for the device.
  */
-void DEV_I2C_Set_Slave_Addr(i2c_master_dev_handle_t *dev_handle, uint8_t Addr);
+esp_err_t DEV_I2C_Set_Slave_Addr(i2c_master_dev_handle_t *dev_handle, uint8_t Addr);
 
 /**
  * @brief Write a single byte to the I2C device.
