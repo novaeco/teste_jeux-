@@ -86,6 +86,8 @@ static void hide_error_screen(void) {
 
 static void wait_for_sd_card(void) {
   esp_err_t err;
+  int attempts = 0;
+  const int max_attempts = 10;
 
   while (true) {
     esp_task_wdt_reset();
@@ -98,6 +100,12 @@ static void wait_for_sd_card(void) {
     ESP_LOGE(TAG, "Carte SD absente ou illisible (%s)",
              esp_err_to_name(err));
     show_error_screen("Insérer une carte SD valide");
+    vTaskDelay(pdMS_TO_TICKS(500));
+    if (++attempts >= max_attempts) {
+      show_error_screen("Carte SD absente - redémarrage");
+      vTaskDelay(pdMS_TO_TICKS(2000));
+      esp_restart();
+    }
     // Attendre indéfiniment jusqu'à insertion d'une carte valide
   }
 }
