@@ -34,14 +34,21 @@ float sensors_read_temperature(void)
         return NAN;
     }
 
-    uint16_t raw_tmp = DEV_I2C_Read_Word(tmp117_dev, 0x00);
+    uint16_t raw_tmp = 0;
+    if (DEV_I2C_Read_Word(tmp117_dev, 0x00, &raw_tmp) != ESP_OK) {
+        return NAN;
+    }
     float tmp117 = (int16_t)raw_tmp * 0.0078125f;
 
     uint8_t cmd[2] = {0x2C, 0x06};
-    DEV_I2C_Write_Nbyte(sht31_dev, cmd, 2);
+    if (DEV_I2C_Write_Nbyte(sht31_dev, cmd, 2) != ESP_OK) {
+        return NAN;
+    }
     vTaskDelay(pdMS_TO_TICKS(15));
     uint8_t data[6] = {0};
-    DEV_I2C_Read_Nbyte(sht31_dev, 0x00, data, 6);
+    if (DEV_I2C_Read_Nbyte(sht31_dev, 0x00, data, 6) != ESP_OK) {
+        return NAN;
+    }
     uint16_t raw_sht = (data[0] << 8) | data[1];
     float sht31 = -45.0f + 175.0f * ((float)raw_sht / 65535.0f);
 
@@ -55,10 +62,14 @@ float sensors_read_humidity(void)
     }
 
     uint8_t cmd[2] = {0x2C, 0x06};
-    DEV_I2C_Write_Nbyte(sht31_dev, cmd, 2);
+    if (DEV_I2C_Write_Nbyte(sht31_dev, cmd, 2) != ESP_OK) {
+        return NAN;
+    }
     vTaskDelay(pdMS_TO_TICKS(15));
     uint8_t data[6] = {0};
-    DEV_I2C_Read_Nbyte(sht31_dev, 0x00, data, 6);
+    if (DEV_I2C_Read_Nbyte(sht31_dev, 0x00, data, 6) != ESP_OK) {
+        return NAN;
+    }
     uint16_t raw_hum = (data[3] << 8) | data[4];
     return 100.0f * ((float)raw_hum / 65535.0f);
 }
