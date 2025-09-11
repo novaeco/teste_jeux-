@@ -215,6 +215,10 @@ void app_main() {
 
   // Initialize the GT911 touch screen controller
   tp_handle = touch_gt911_init();
+  if (tp_handle == NULL) {
+    ESP_LOGE(TAG, "Failed to initialize GT911 touch controller");
+    return;
+  }
 
   // Initialize the Waveshare ESP32-S3 RGB LCD hardware
   panel_handle = waveshare_esp32_s3_rgb_lcd_init();

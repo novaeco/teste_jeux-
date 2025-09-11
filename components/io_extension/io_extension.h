@@ -57,7 +57,7 @@
  
  
  /* Function declarations */
- void IO_EXTENSION_Init();                     // Initialize the IO_EXTENSION device
+ esp_err_t IO_EXTENSION_Init();                     // Initialize the IO_EXTENSION device
  void IO_EXTENSION_Output(uint8_t pin, uint8_t value);     // Set IO pin output (high/low)
  uint8_t IO_EXTENSION_Input(uint8_t pin);   // Read IO pin input state
  void IO_EXTENSION_Pwm_Output(uint8_t Value);
