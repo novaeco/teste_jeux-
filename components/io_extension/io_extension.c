@@ -12,6 +12,9 @@
  *
  ******************************************************************************/
 #include "io_extension.h"  // Include IO_EXTENSION driver header for GPIO functions
+#include "esp_log.h"
+
+static const char *TAG = "IO_EXTENSION";
  
 io_extension_obj_t IO_EXTENSION;  // Define the global IO_EXTENSION object
 
@@ -35,16 +38,22 @@ void IO_EXTENSION_IO_Mode(uint8_t pin)
  * This function configures the slave addresses for different registers of the
  * IO_EXTENSION chip via I2C, and sets the control flags for input/output modes.
  */
-void IO_EXTENSION_Init()
+esp_err_t IO_EXTENSION_Init()
 {
     // Set the I2C slave address for the IO_EXTENSION device
-    DEV_I2C_Set_Slave_Addr(&IO_EXTENSION.addr, IO_EXTENSION_ADDR);
+    esp_err_t ret = DEV_I2C_Set_Slave_Addr(&IO_EXTENSION.addr, IO_EXTENSION_ADDR);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set I2C address: %s", esp_err_to_name(ret));
+        return ret;
+    }
 
     IO_EXTENSION_IO_Mode(0xff); // Set all pins to output mode
 
     // Initialize control flags for IO output enable and open-drain output mode
     IO_EXTENSION.Last_io_value = 0xFF; // All pins are initially set to high (output mode)
     IO_EXTENSION.Last_od_value = 0xFF; // All pins are initially set to high (open-drain mode)
+
+    return ESP_OK;
 }
 
 /**
