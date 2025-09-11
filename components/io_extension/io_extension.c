@@ -25,11 +25,16 @@ io_extension_obj_t IO_EXTENSION;  // Define the global IO_EXTENSION object
  * 
  * @param pin An 8-bit value where each bit represents a pin (0 = input, 1 = output).
  */
-void IO_EXTENSION_IO_Mode(uint8_t pin) 
+esp_err_t IO_EXTENSION_IO_Mode(uint8_t pin)
 {
+    if (IO_EXTENSION.addr == NULL) {
+        ESP_LOGE(TAG, "IO_EXTENSION address is NULL");
+        return ESP_ERR_INVALID_STATE;
+    }
     uint8_t data[2] = {IO_EXTENSION_Mode, pin}; // Prepare the data to write to the mode register
     // Write the 8-bit value to the IO mode register
     DEV_I2C_Write_Nbyte(IO_EXTENSION.addr, data, 2);
+    return ESP_OK;
 }
 
 /**
@@ -47,7 +52,11 @@ esp_err_t IO_EXTENSION_Init()
         return ret;
     }
 
-    IO_EXTENSION_IO_Mode(0xff); // Set all pins to output mode
+    ret = IO_EXTENSION_IO_Mode(0xff); // Set all pins to output mode
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set IO mode: %s", esp_err_to_name(ret));
+        return ret;
+    }
 
     // Initialize control flags for IO output enable and open-drain output mode
     IO_EXTENSION.Last_io_value = 0xFF; // All pins are initially set to high (output mode)
@@ -65,8 +74,12 @@ esp_err_t IO_EXTENSION_Init()
  * @param pin The pin number to set (0-7).
  * @param value The value to set on the specified pin (0 = low, 1 = high).
  */
-void IO_EXTENSION_Output(uint8_t pin, uint8_t value) 
+esp_err_t IO_EXTENSION_Output(uint8_t pin, uint8_t value)
 {
+    if (IO_EXTENSION.addr == NULL) {
+        ESP_LOGE(TAG, "IO_EXTENSION address is NULL");
+        return ESP_ERR_INVALID_STATE;
+    }
     // Update the output value based on the pin and value
     if (value == 1)
         IO_EXTENSION.Last_io_value |= (1 << pin); // Set the pin high
@@ -76,6 +89,7 @@ void IO_EXTENSION_Output(uint8_t pin, uint8_t value)
     uint8_t data[2] = {IO_EXTENSION_IO_OUTPUT_ADDR, IO_EXTENSION.Last_io_value}; // Prepare the data to write to the output register
     // Write the 8-bit value to the IO output register
     DEV_I2C_Write_Nbyte(IO_EXTENSION.addr, data, 2);
+    return ESP_OK;
 }
 
 /**
@@ -87,14 +101,22 @@ void IO_EXTENSION_Output(uint8_t pin, uint8_t value)
  * @param pin The bit mask to specify which pin to read (e.g., 0x01 for the first pin).
  * @return The value of the specified pin(s) (0 = low, 1 = high).
  */
-uint8_t IO_EXTENSION_Input(uint8_t pin) 
+esp_err_t IO_EXTENSION_Input(uint8_t pin, uint8_t *value)
 {
-    uint8_t value = 0;
+    if (value == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (IO_EXTENSION.addr == NULL) {
+        ESP_LOGE(TAG, "IO_EXTENSION address is NULL");
+        return ESP_ERR_INVALID_STATE;
+    }
+    uint8_t read_val = 0;
 
     // Read the value of the input pins
-    DEV_I2C_Read_Nbyte(IO_EXTENSION.addr, IO_EXTENSION_IO_INPUT_ADDR, &value, 1);
+    DEV_I2C_Read_Nbyte(IO_EXTENSION.addr, IO_EXTENSION_IO_INPUT_ADDR, &read_val, 1);
     // Return the value of the specific pin(s) by masking with the provided bit mask
-    return ((value & (1 << pin)) > 0);
+    *value = ((read_val & (1 << pin)) > 0);
+    return ESP_OK;
 }
 
 /**
@@ -105,8 +127,12 @@ uint8_t IO_EXTENSION_Input(uint8_t pin)
  * 
  * @param Value The input value to set the PWM duty cycle (0-100).
  */
-void IO_EXTENSION_Pwm_Output(uint8_t Value)
+esp_err_t IO_EXTENSION_Pwm_Output(uint8_t Value)
 {
+    if (IO_EXTENSION.addr == NULL) {
+        ESP_LOGE(TAG, "IO_EXTENSION address is NULL");
+        return ESP_ERR_INVALID_STATE;
+    }
     // Prevent the screen from completely turning off
     if (Value >= 97)
     {
@@ -118,6 +144,7 @@ void IO_EXTENSION_Pwm_Output(uint8_t Value)
     data[1] = Value * (255 / 100.0);
     // Write the 8-bit value to the PWM output register
     DEV_I2C_Write_Nbyte(IO_EXTENSION.addr, data, 2);
+    return ESP_OK;
 }
 
 /**
@@ -127,8 +154,16 @@ void IO_EXTENSION_Pwm_Output(uint8_t Value)
  * 
  * @return The ADC input value.
  */
-uint16_t IO_EXTENSION_Adc_Input()
+esp_err_t IO_EXTENSION_Adc_Input(uint16_t *value)
 {
+    if (value == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (IO_EXTENSION.addr == NULL) {
+        ESP_LOGE(TAG, "IO_EXTENSION address is NULL");
+        return ESP_ERR_INVALID_STATE;
+    }
     // Read the ADC input value from the IO_EXTENSION device
-    return DEV_I2C_Read_Word(IO_EXTENSION.addr, IO_EXTENSION_ADC_ADDR);
+    *value = DEV_I2C_Read_Word(IO_EXTENSION.addr, IO_EXTENSION_ADC_ADDR);
+    return ESP_OK;
 }

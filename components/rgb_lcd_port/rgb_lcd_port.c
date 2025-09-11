@@ -219,7 +219,10 @@ void waveshare_rgb_lcd_restart()
  */
 void wavesahre_rgb_lcd_bl_on()
 {
-    IO_EXTENSION_Output(IO_EXTENSION_IO_2, 1);  // Backlight ON configuration
+    esp_err_t ret = IO_EXTENSION_Output(IO_EXTENSION_IO_2, 1);  // Backlight ON configuration
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Backlight ON failed: %s", esp_err_to_name(ret));
+    }
 }
 
 /**
@@ -232,5 +235,8 @@ void wavesahre_rgb_lcd_bl_on()
  */
 void wavesahre_rgb_lcd_bl_off()
 {
-    IO_EXTENSION_Output(IO_EXTENSION_IO_2, 0);  // Backlight OFF configuration
+    esp_err_t ret = IO_EXTENSION_Output(IO_EXTENSION_IO_2, 0);  // Backlight OFF configuration
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Backlight OFF failed: %s", esp_err_to_name(ret));
+    }
 }

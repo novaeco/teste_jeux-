@@ -18,6 +18,7 @@
  #define __IO_EXTENSION_H
  
  #include "i2c.h"  // Include I2C header for I2C communication functions
+ #include "esp_err.h"
  
  /* 
   * IO EXTENSION GPIO control via I2C - Register and Command Definitions
@@ -58,10 +59,10 @@
  
  /* Function declarations */
  esp_err_t IO_EXTENSION_Init();                     // Initialize the IO_EXTENSION device
- void IO_EXTENSION_Output(uint8_t pin, uint8_t value);     // Set IO pin output (high/low)
- uint8_t IO_EXTENSION_Input(uint8_t pin);   // Read IO pin input state
- void IO_EXTENSION_Pwm_Output(uint8_t Value);
- uint16_t IO_EXTENSION_Adc_Input();
+ esp_err_t IO_EXTENSION_Output(uint8_t pin, uint8_t value);     // Set IO pin output (high/low)
+ esp_err_t IO_EXTENSION_Input(uint8_t pin, uint8_t *value);   // Read IO pin input state
+ esp_err_t IO_EXTENSION_Pwm_Output(uint8_t Value);
+ esp_err_t IO_EXTENSION_Adc_Input(uint16_t *value);
  
  #endif  // __IO_EXTENSION_H
  
