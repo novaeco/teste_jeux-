@@ -10,6 +10,7 @@
 
 static const char *TAG = "reptile_logic";
 static bool s_sensors_ready = false;
+static bool log_once = false;
 
 esp_err_t reptile_init(reptile_t *r) {
   if (!r) {
@@ -48,7 +49,10 @@ void reptile_update(reptile_t *r, uint32_t elapsed_ms) {
     float temp = sensors_read_temperature();
     r->temperature = (uint32_t)temp;
   } else {
-    ESP_LOGW(TAG, "Capteurs indisponibles");
+    if (!log_once) {
+      ESP_LOGW(TAG, "Capteurs indisponibles");
+      log_once = true;
+    }
   }
 
   r->last_update += (time_t)decay;
@@ -148,4 +152,8 @@ reptile_event_t reptile_check_events(reptile_t *r) {
   }
 
   return evt;
+}
+
+bool reptile_sensors_available(void) {
+  return s_sensors_ready;
 }
