@@ -3,18 +3,18 @@
 #include "esp_random.h"
 #include "gpio.h"
 #include "sensors.h"
-#include "game_mode.h"
 #include <stdbool.h>
 #include <math.h>
 #include <stdio.h>
 
-#define SAVE_PATH "/sdcard/reptile_state.bin"
+#define SAVE_PATH "/sd/reptile_state.bin"
 
 static const char *TAG = "reptile_logic";
 static bool s_sensors_ready = false;
 static bool s_simulation_mode = false;
 static bool log_once = false;
 
+static void reptile_set_defaults(reptile_t *r);
 
 esp_err_t reptile_init(reptile_t *r, bool simulation) {
   if (!r) {
@@ -34,6 +34,10 @@ esp_err_t reptile_init(reptile_t *r, bool simulation) {
     s_sensors_ready = false;
   }
 
+  reptile_set_defaults(r);
+
+  return ESP_OK;
+}
 
 static void reptile_set_defaults(reptile_t *r) {
   r->faim = 100;
@@ -43,28 +47,6 @@ static void reptile_set_defaults(reptile_t *r) {
   r->humeur = 100;
   r->event = REPTILE_EVENT_NONE;
   r->last_update = time(NULL);
-}
-
-esp_err_t reptile_init(reptile_t *r) {
-  if (!r) {
-    return ESP_ERR_INVALID_ARG;
-  }
-
-  if (g_game_mode == GAME_MODE_SIMULATION) {
-    s_sensors_ready = false;
-  } else {
-    esp_err_t err = sensors_init();
-    if (err != ESP_OK) {
-      ESP_LOGE(TAG, "Capteurs non initialisés");
-      s_sensors_ready = false;
-      return err;
-    }
-    s_sensors_ready = true;
-  }
-
-  reptile_set_defaults(r);
-
-  return ESP_OK;
 }
 
 void reptile_update(reptile_t *r, uint32_t elapsed_ms) {
@@ -111,25 +93,11 @@ void reptile_update(reptile_t *r, uint32_t elapsed_ms) {
   r->last_update += (time_t)decay;
 }
 
-static esp_err_t reptile_save_nvs(reptile_t *r) {
-  if (!r) {
-    return ESP_ERR_INVALID_ARG;
-  }
-  FILE *f = fopen(SAVE_PATH, "wb");
-  if (!f) {
-    ESP_LOGE(TAG, "Impossible d'ouvrir %s", SAVE_PATH);
-    return ESP_FAIL;
-  }
-  size_t written = fwrite(r, 1, sizeof(reptile_t), f);
-  fclose(f);
-  return (written == sizeof(reptile_t)) ? ESP_OK : ESP_FAIL;
-}
-
 esp_err_t reptile_save_sd(reptile_t *r) {
   if (!r) {
     return ESP_ERR_INVALID_ARG;
   }
-  FILE *f = fopen("/sd/reptile_save.bin", "wb");
+  FILE *f = fopen(SAVE_PATH, "wb");
   if (!f) {
     ESP_LOGE(TAG, "Impossible d'ouvrir le fichier de sauvegarde SD");
     return ESP_FAIL;
@@ -141,6 +109,13 @@ esp_err_t reptile_save_sd(reptile_t *r) {
     return ESP_FAIL;
   }
   return ESP_OK;
+}
+
+esp_err_t reptile_save(reptile_t *r) {
+  if (!r) {
+    return ESP_ERR_INVALID_ARG;
+  }
+  return reptile_save_sd(r);
 }
 
 esp_err_t reptile_load(reptile_t *r) {
@@ -162,8 +137,10 @@ void reptile_feed(reptile_t *r) {
     return;
   }
   r->faim = (r->faim + 10 > 100) ? 100 : r->faim + 10;
-  /* Physically pulse the feeder servo */
-  reptile_feed_gpio();
+  if (!s_simulation_mode) {
+    /* Physically pulse the feeder servo */
+    reptile_feed_gpio();
+  }
   reptile_save(r);
 }
 
@@ -172,8 +149,10 @@ void reptile_give_water(reptile_t *r) {
     return;
   }
   r->eau = (r->eau + 10 > 100) ? 100 : r->eau + 10;
-  /* Activate the water pump */
-  reptile_water_gpio();
+  if (!s_simulation_mode) {
+    /* Activate the water pump */
+    reptile_water_gpio();
+  }
   reptile_save(r);
 }
 
@@ -182,8 +161,10 @@ void reptile_heat(reptile_t *r) {
     return;
   }
   r->temperature = (r->temperature + 5 > 50) ? 50 : r->temperature + 5;
-  /* Drive the heating resistor */
-  reptile_heat_gpio();
+  if (!s_simulation_mode) {
+    /* Drive the heating resistor */
+    reptile_heat_gpio();
+  }
   reptile_save(r);
 }
 
@@ -222,5 +203,5 @@ reptile_event_t reptile_check_events(reptile_t *r) {
 }
 
 bool reptile_sensors_available(void) {
-  return s_simulation_mode || s_sensors_ready;
+  return (!s_simulation_mode) && s_sensors_ready;
 }
