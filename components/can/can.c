@@ -137,10 +137,14 @@ uint32_t can_read_alerts()
  * This function queues a CAN message for transmission and logs the result.
  *
  * @param message The CAN message to be transmitted.
+ *
+ * @return ESP_OK on success, otherwise the error code returned by
+ * `twai_transmit`.
  */
-void can_write_Byte(can_message_t message)
+esp_err_t can_write_Byte(can_message_t message)
 {
-    if (twai_transmit(&message, portMAX_DELAY) == ESP_OK)
+    esp_err_t ret = twai_transmit(&message, portMAX_DELAY);
+    if (ret == ESP_OK)
     {
         printf("Message queued for transmission\n"); // Log success
     }
@@ -148,6 +152,7 @@ void can_write_Byte(can_message_t message)
     {
         printf("Failed to queue message for transmission\n"); // Log failure
     }
+    return ret;
 }
 
 /**

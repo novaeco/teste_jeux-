@@ -57,8 +57,11 @@ uint32_t can_read_alerts();
  * @brief Sends a single byte of data over the CAN interface.
  *
  * @param message The CAN message to be transmitted.
+ *
+ * @return ESP_OK on success, otherwise an error code returned by the TWAI
+ * driver.
  */
-void can_write_Byte(can_message_t message);
+esp_err_t can_write_Byte(can_message_t message);
 
 /**
  * @brief Reads a single byte of data from the CAN interface.
