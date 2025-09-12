@@ -6,6 +6,8 @@
 #include "esp_log.h"
 #include "esp_heap_caps.h"
 #include "lvgl_port.h"
+#include <LovyanGFX.hpp>
+#include "LGFX_S3_RGB.hpp"
 
 static const char *TAG = "lv_port";
 static SemaphoreHandle_t lvgl_mux;
@@ -16,13 +18,13 @@ static TaskHandle_t lvgl_task_handle = NULL;
  */
 static void flush_callback(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 {
-    esp_lcd_panel_handle_t panel_handle = (esp_lcd_panel_handle_t)lv_display_get_user_data(disp);
     int32_t offsetx1 = area->x1;
-    int32_t offsetx2 = area->x2;
     int32_t offsety1 = area->y1;
-    int32_t offsety2 = area->y2;
+    int32_t width = area->x2 - area->x1 + 1;
+    int32_t height = area->y2 - area->y1 + 1;
 
-    esp_lcd_panel_draw_bitmap(panel_handle, offsetx1, offsety1, offsetx2 + 1, offsety2 + 1, px_map);
+    lgfx.pushImageDMA(offsetx1, offsety1, width, height, (const uint16_t *)px_map);
+    lgfx.waitDMA();
 
     lv_display_flush_ready(disp);
 }
