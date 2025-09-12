@@ -4,6 +4,7 @@
 #include "lvgl_port.h"
 #include "sleep.h"
 #include "logging.h"
+#include "esp_log.h"
 #include <inttypes.h>
 #include <stdbool.h>
 
@@ -30,10 +31,15 @@ extern lv_obj_t *menu_screen;
 #define REPTILE_UPDATE_PERIOD_MS 1000
 
 static reptile_t reptile;
+static const bool kSimulationMode = true;
 static uint32_t last_tick;
 static lv_timer_t *life_timer;
 static lv_timer_t *action_timer;
 static uint32_t soothe_time_ms;
+static uint32_t update_ms_accum;
+static uint32_t soothe_ms_accum;
+
+static const char *TAG = "reptile_game";
 
 typedef enum {
   ACTION_FEED,
@@ -65,12 +71,14 @@ static void show_action_sprite(action_type_t action);
 static void revert_sprite_cb(lv_timer_t *t);
 
 void reptile_game_init(void) {
-  esp_err_t err = reptile_init(&reptile);
+  reptile_init(&reptile, kSimulationMode);
   last_tick = lv_tick_get();
-  if (err != ESP_OK) {
+  update_ms_accum = 0;
+  soothe_ms_accum = 0;
+  if (!reptile_sensors_available()) {
     lv_obj_t *mbox = lv_msgbox_create(NULL);
-    lv_msgbox_add_title(mbox, "Erreur");
-    lv_msgbox_add_text(mbox, "Capteurs non initialisés");
+    lv_msgbox_add_title(mbox, "Info");
+    lv_msgbox_add_text(mbox, "Pas de capteur");
     lv_msgbox_add_close_button(mbox);
     lv_obj_center(mbox);
   }
@@ -118,15 +126,29 @@ static void show_event_popup(reptile_event_t event) {
 }
 
 static void set_bar_color(lv_obj_t *bar, uint32_t value, uint32_t max) {
-  uint32_t pct = (value * 100) / max;
   lv_color_t palette_color;
-  if (pct > 70) {
-    palette_color = lv_palette_main(LV_PALETTE_GREEN);
-  } else if (pct > 30) {
-    palette_color = lv_palette_main(LV_PALETTE_YELLOW);
+
+  if (bar == bar_temp) {
+    if (value < REPTILE_TEMP_THRESHOLD_LOW ||
+        value > REPTILE_TEMP_THRESHOLD_HIGH) {
+      palette_color = lv_palette_main(LV_PALETTE_RED);
+    } else if (value <= REPTILE_TEMP_THRESHOLD_LOW + 1 ||
+               value >= REPTILE_TEMP_THRESHOLD_HIGH - 1) {
+      palette_color = lv_palette_main(LV_PALETTE_YELLOW);
+    } else {
+      palette_color = lv_palette_main(LV_PALETTE_GREEN);
+    }
   } else {
-    palette_color = lv_palette_main(LV_PALETTE_RED);
+    uint32_t pct = (value * 100) / max;
+    if (pct > 70) {
+      palette_color = lv_palette_main(LV_PALETTE_GREEN);
+    } else if (pct > 30) {
+      palette_color = lv_palette_main(LV_PALETTE_YELLOW);
+    } else {
+      palette_color = lv_palette_main(LV_PALETTE_RED);
+    }
   }
+
   lv_obj_set_style_bg_color(bar, palette_color, LV_PART_INDICATOR);
 }
 
@@ -199,21 +221,34 @@ void reptile_tick(lv_timer_t *timer) {
   uint32_t now = lv_tick_get();
   uint32_t elapsed = now - last_tick;
   last_tick = now;
-  uint32_t sec = elapsed / 1000U;
-  if (sec) {
-    reptile_update(&reptile, elapsed);
-    if (soothe_time_ms > 0) {
-      uint32_t inc = sec * 2U;
+
+  update_ms_accum += elapsed;
+  uint32_t process_ms = update_ms_accum - (update_ms_accum % 1000U);
+  reptile_update(&reptile, process_ms);
+  update_ms_accum -= process_ms;
+  bool dirty = process_ms > 0;
+
+  if (soothe_time_ms > 0) {
+    soothe_time_ms = (soothe_time_ms > elapsed) ? (soothe_time_ms - elapsed) : 0;
+    soothe_ms_accum += elapsed;
+    uint32_t mood_sec = soothe_ms_accum / 1000U;
+    if (mood_sec > 0) {
+      uint32_t inc = mood_sec * 2U;
       reptile.humeur =
           (reptile.humeur + inc > 100) ? 100 : reptile.humeur + inc;
-      soothe_time_ms =
-          (soothe_time_ms > elapsed) ? (soothe_time_ms - elapsed) : 0;
+      soothe_ms_accum -= mood_sec * 1000U;
+      dirty = true;
     }
-    reptile_event_t prev_evt = reptile.event;
-    reptile_event_t evt = reptile_check_events(&reptile);
-    if (evt != prev_evt && evt != REPTILE_EVENT_NONE) {
-      show_event_popup(evt);
-    }
+  } else {
+    soothe_ms_accum = 0;
+  }
+
+  reptile_event_t prev_evt = reptile.event;
+  reptile_event_t evt = reptile_check_events(&reptile);
+  if (evt != prev_evt && evt != REPTILE_EVENT_NONE) {
+    show_event_popup(evt);
+  }
+  if (dirty) {
     reptile_save(&reptile);
   }
 
@@ -235,7 +270,10 @@ void reptile_tick(lv_timer_t *timer) {
   msg.data[6] = (uint8_t)(reptile.humeur & 0xFF);
   msg.data[7] = (uint8_t)((reptile.humeur >> 8) & 0xFF);
   if (can_is_active()) {
-    can_write_Byte(msg);
+    esp_err_t err = can_write_Byte(msg);
+    if (err != ESP_OK) {
+      ESP_LOGW(TAG, "CAN write failed: %s", esp_err_to_name(err));
+    }
   }
 
   if (reptile.faim <= REPTILE_FAMINE_THRESHOLD) {
@@ -318,6 +356,9 @@ void reptile_game_stop(void) {
     lv_obj_del(screen_stats);
     screen_stats = NULL;
   }
+  lv_style_reset(&style_font24);
+  update_ms_accum = 0;
+  soothe_ms_accum = 0;
 }
 
 static void menu_btn_event_cb(lv_event_t *e) {
@@ -332,30 +373,40 @@ static void menu_btn_event_cb(lv_event_t *e) {
 static void ui_update_main(void) {
   lv_bar_set_value(bar_faim, reptile.faim, LV_ANIM_ON);
   lv_bar_set_value(bar_eau, reptile.eau, LV_ANIM_ON);
-  lv_bar_set_value(bar_temp, reptile.temperature, LV_ANIM_ON);
-  lv_bar_set_value(bar_humidite, reptile.humidite, LV_ANIM_ON);
   lv_bar_set_value(bar_humeur, reptile.humeur, LV_ANIM_ON);
   set_bar_color(bar_faim, reptile.faim, 100);
   set_bar_color(bar_eau, reptile.eau, 100);
-  set_bar_color(bar_temp, reptile.temperature, 50);
-  set_bar_color(bar_humidite, reptile.humidite, 100);
   set_bar_color(bar_humeur, reptile.humeur, 100);
+
+  if (reptile_sensors_available()) {
+    lv_bar_set_value(bar_temp, reptile.temperature, LV_ANIM_ON);
+    lv_bar_set_value(bar_humidite, reptile.humidite, LV_ANIM_ON);
+    set_bar_color(bar_temp, reptile.temperature, 50);
+    set_bar_color(bar_humidite, reptile.humidite, 100);
+  } else {
+    lv_bar_set_value(bar_temp, 0, LV_ANIM_OFF);
+    lv_bar_set_value(bar_humidite, 0, LV_ANIM_OFF);
+    lv_obj_set_style_bg_color(bar_temp, lv_palette_main(LV_PALETTE_GREY),
+                              LV_PART_INDICATOR);
+    lv_obj_set_style_bg_color(bar_humidite, lv_palette_main(LV_PALETTE_GREY),
+                              LV_PART_INDICATOR);
+  }
   update_sprite();
 }
 
 static void ui_update_stats(void) {
   lv_label_set_text_fmt(label_stat_faim, "Faim: %" PRIu32, reptile.faim);
   lv_label_set_text_fmt(label_stat_eau, "Eau: %" PRIu32, reptile.eau);
-  lv_label_set_text_fmt(label_stat_temp, "Température: %" PRIu32,
-                        reptile.temperature);
-  lv_label_set_text_fmt(label_stat_humidite, "Humidité: %" PRIu32,
-                        reptile.humidite);
+  if (reptile_sensors_available()) {
+    lv_label_set_text_fmt(label_stat_temp, "Température: %" PRIu32,
+                          reptile.temperature);
+    lv_label_set_text_fmt(label_stat_humidite, "Humidité: %" PRIu32,
+                          reptile.humidite);
+  } else {
+    lv_label_set_text(label_stat_temp, "Température: pas de capteur");
+    lv_label_set_text(label_stat_humidite, "Humidité: pas de capteur");
+  }
   lv_label_set_text_fmt(label_stat_humeur, "Humeur: %" PRIu32, reptile.humeur);
-  set_bar_color(bar_faim, reptile.faim, 100);
-  set_bar_color(bar_eau, reptile.eau, 100);
-  set_bar_color(bar_temp, reptile.temperature, 50);
-  set_bar_color(bar_humidite, reptile.humidite, 100);
-  set_bar_color(bar_humeur, reptile.humeur, 100);
 }
 
 void reptile_game_start(esp_lcd_panel_handle_t panel,

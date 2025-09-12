@@ -1,28 +1,36 @@
 #include "reptile_logic.h"
 #include "esp_log.h"
+#include "esp_random.h"
 #include "gpio.h"
-#include "nvs.h"
-#include "nvs_flash.h"
 #include "sensors.h"
 #include <stdbool.h>
+#include <math.h>
+#include <stdio.h>
 
-#define NVS_NAMESPACE "reptile"
+#define SAVE_PATH "/sdcard/reptile_state.bin"
 
 static const char *TAG = "reptile_logic";
 static bool s_sensors_ready = false;
+static bool s_simulation_mode = false;
 static bool log_once = false;
 
-esp_err_t reptile_init(reptile_t *r) {
+esp_err_t reptile_init(reptile_t *r, bool simulation) {
   if (!r) {
     return ESP_ERR_INVALID_ARG;
   }
 
-  esp_err_t err = sensors_init();
-  if (err != ESP_OK) {
-    ESP_LOGE(TAG, "Capteurs non initialisés");
-    return err;
+  s_simulation_mode = simulation;
+  if (!simulation) {
+    esp_err_t err = sensors_init();
+    if (err == ESP_OK) {
+      s_sensors_ready = true;
+    } else {
+      ESP_LOGW(TAG, "Capteurs non initialisés");
+      s_sensors_ready = false;
+    }
+  } else {
+    s_sensors_ready = false;
   }
-  s_sensors_ready = true;
 
   r->faim = 100;
   r->eau = 100;
@@ -46,16 +54,28 @@ void reptile_update(reptile_t *r, uint32_t elapsed_ms) {
   r->eau = (r->eau > decay) ? (r->eau - decay) : 0;
   r->humeur = (r->humeur > decay) ? (r->humeur - decay) : 0;
 
-  if (s_sensors_ready) {
-    float temp = sensors_read_temperature();
-    float hum = sensors_read_humidity();
-    if (hum < 0.f)
-      hum = 0.f;
-    else if (hum > 100.f)
-      hum = 100.f;
+  if (s_simulation_mode) {
+    uint32_t randv = esp_random();
+    float temp = 26.0f + (float)(randv % 80) / 10.0f; /* 26.0 - 33.9 */
+    randv = esp_random();
+    float hum = 40.0f + (float)(randv % 200) / 10.0f; /* 40.0 - 59.9 */
     r->temperature = (uint32_t)temp;
     r->humidite = (uint32_t)hum;
-    reptile_save(r);
+  } else if (s_sensors_ready) {
+    float temp = sensors_read_temperature();
+    float hum = sensors_read_humidity();
+
+    if (!isnan(temp)) {
+      r->temperature = (uint32_t)temp;
+    }
+
+    if (!isnan(hum)) {
+      if (hum < 0.f)
+        hum = 0.f;
+      else if (hum > 100.f)
+        hum = 100.f;
+      r->humidite = (uint32_t)hum;
+    }
   } else {
     if (!log_once) {
       ESP_LOGW(TAG, "Capteurs indisponibles");
@@ -70,32 +90,27 @@ esp_err_t reptile_save(reptile_t *r) {
   if (!r) {
     return ESP_ERR_INVALID_ARG;
   }
-  nvs_handle_t handle;
-  esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &handle);
-  if (err != ESP_OK) {
-    return err;
+  FILE *f = fopen(SAVE_PATH, "wb");
+  if (!f) {
+    ESP_LOGE(TAG, "Impossible d'ouvrir %s", SAVE_PATH);
+    return ESP_FAIL;
   }
-  err = nvs_set_blob(handle, "state", r, sizeof(reptile_t));
-  if (err == ESP_OK) {
-    err = nvs_commit(handle);
-  }
-  nvs_close(handle);
-  return err;
+  size_t written = fwrite(r, 1, sizeof(reptile_t), f);
+  fclose(f);
+  return (written == sizeof(reptile_t)) ? ESP_OK : ESP_FAIL;
 }
 
 esp_err_t reptile_load(reptile_t *r) {
   if (!r) {
     return ESP_ERR_INVALID_ARG;
   }
-  nvs_handle_t handle;
-  esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READONLY, &handle);
-  if (err != ESP_OK) {
-    return err;
+  FILE *f = fopen(SAVE_PATH, "rb");
+  if (!f) {
+    return ESP_FAIL;
   }
-  size_t size = sizeof(reptile_t);
-  err = nvs_get_blob(handle, "state", r, &size);
-  nvs_close(handle);
-  return err;
+  size_t read = fread(r, 1, sizeof(reptile_t), f);
+  fclose(f);
+  return (read == sizeof(reptile_t)) ? ESP_OK : ESP_FAIL;
 }
 
 void reptile_feed(reptile_t *r) {
@@ -163,5 +178,5 @@ reptile_event_t reptile_check_events(reptile_t *r) {
 }
 
 bool reptile_sensors_available(void) {
-  return s_sensors_ready;
+  return s_simulation_mode || s_sensors_ready;
 }
