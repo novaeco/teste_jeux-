@@ -47,6 +47,8 @@ void lv_draw_gfx_init(lv_display_t *disp, lv_draw_gfx_t *gfx)
     LV_ASSERT(gfx);
 
     memcpy(&gfx->base, draw_ctx, sizeof(lv_draw_ctx_t));
+    gfx->base.fill_cb  = gfx->fill_cb;
+    gfx->base.blend_cb = gfx->blend_cb;
     lv_display_set_draw_ctx(disp, &gfx->base);
 }
 
