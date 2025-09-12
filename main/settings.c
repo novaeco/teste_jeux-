@@ -30,17 +30,28 @@ static lv_obj_t *dd_log;
 
 extern lv_obj_t *menu_screen;
 
+void settings_apply(void)
+{
+    sleep_set_enabled(g_settings.sleep_default);
+    esp_log_level_set("*", g_settings.log_level);
+}
+
 esp_err_t settings_save(void)
 {
     nvs_handle_t nvs;
     esp_err_t err = nvs_open(NVS_NS, NVS_READWRITE, &nvs);
     if (err != ESP_OK)
         return err;
-    nvs_set_i32(nvs, KEY_TEMP, g_settings.temp_threshold);
-    nvs_set_i32(nvs, KEY_HUM, g_settings.humidity_threshold);
-    nvs_set_u8(nvs, KEY_SLEEP, g_settings.sleep_default);
-    nvs_set_u8(nvs, KEY_LOG, g_settings.log_level);
+    if ((err = nvs_set_i32(nvs, KEY_TEMP, g_settings.temp_threshold)) != ESP_OK)
+        goto out;
+    if ((err = nvs_set_i32(nvs, KEY_HUM, g_settings.humidity_threshold)) != ESP_OK)
+        goto out;
+    if ((err = nvs_set_u8(nvs, KEY_SLEEP, g_settings.sleep_default)) != ESP_OK)
+        goto out;
+    if ((err = nvs_set_u8(nvs, KEY_LOG, g_settings.log_level)) != ESP_OK)
+        goto out;
     err = nvs_commit(nvs);
+out:
     nvs_close(nvs);
     return err;
 }
@@ -61,8 +72,7 @@ esp_err_t settings_init(void)
             g_settings.log_level = val8;
         nvs_close(nvs);
     }
-    sleep_set_enabled(g_settings.sleep_default);
-    esp_log_level_set("*", g_settings.log_level);
+    settings_apply();
     return ESP_OK;
 }
 
@@ -74,8 +84,7 @@ static void save_btn_cb(lv_event_t *e)
     g_settings.sleep_default = lv_obj_has_state(sw_sleep, LV_STATE_CHECKED);
     g_settings.log_level = lv_dropdown_get_selected(dd_log);
     settings_save();
-    sleep_set_enabled(g_settings.sleep_default);
-    esp_log_level_set("*", g_settings.log_level);
+    settings_apply();
     lv_scr_load(menu_screen);
     lv_obj_del_async(screen);
 }
@@ -91,6 +100,7 @@ void settings_screen_show(void)
     sb_temp = lv_spinbox_create(screen);
     lv_spinbox_set_range(sb_temp, 0, 100);
     lv_spinbox_set_value(sb_temp, g_settings.temp_threshold);
+    lv_spinbox_set_step(sb_temp, 1);
     lv_obj_align_to(sb_temp, label, LV_ALIGN_OUT_RIGHT_MID, 10, 0);
 
     label = lv_label_create(screen);
@@ -100,6 +110,7 @@ void settings_screen_show(void)
     sb_hum = lv_spinbox_create(screen);
     lv_spinbox_set_range(sb_hum, 0, 100);
     lv_spinbox_set_value(sb_hum, g_settings.humidity_threshold);
+    lv_spinbox_set_step(sb_hum, 1);
     lv_obj_align_to(sb_hum, label, LV_ALIGN_OUT_RIGHT_MID, 10, 0);
 
     label = lv_label_create(screen);
