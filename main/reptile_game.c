@@ -39,6 +39,7 @@ static uint32_t update_ms_accum;
 static uint32_t soothe_ms_accum;
 
 static const char *TAG = "reptile_game";
+static bool s_game_active;
 
 typedef enum {
   ACTION_FEED,
@@ -68,6 +69,8 @@ static void set_bar_color(lv_obj_t *bar, uint32_t value, uint32_t max);
 static void update_sprite(void);
 static void show_action_sprite(action_type_t action);
 static void revert_sprite_cb(lv_timer_t *t);
+
+bool reptile_game_is_active(void) { return s_game_active; }
 
 void reptile_game_init(void) {
   esp_err_t err = reptile_init(&reptile);
@@ -336,6 +339,7 @@ static void sleep_btn_event_cb(lv_event_t *e) {
 }
 
 void reptile_game_stop(void) {
+  s_game_active = false;
   logging_pause();
   sleep_set_enabled(false);
   soothe_time_ms = 0;
@@ -397,6 +401,7 @@ void reptile_game_start(esp_lcd_panel_handle_t panel,
                         esp_lcd_touch_handle_t touch) {
   (void)panel;
   (void)touch;
+  s_game_active = true;
   lv_style_init(&style_font24);
   lv_style_set_text_font(&style_font24, &lv_font_montserrat_24);
 

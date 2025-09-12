@@ -6,12 +6,27 @@
 #include "sensors.h"
 #include <stdbool.h>
 #include <math.h>
+#include <stdio.h>
 
 #define NVS_NAMESPACE "reptile"
 
 static const char *TAG = "reptile_logic";
 static bool s_sensors_ready = false;
 static bool log_once = false;
+
+/* Déclaration anticipée pour savoir si le mode jeu est actif sans dépendance
+ * directe sur le module jeu. La fonction est fournie par reptile_game.c. */
+bool reptile_game_is_active(void);
+
+static void reptile_set_defaults(reptile_t *r) {
+  r->faim = 100;
+  r->eau = 100;
+  r->temperature = 30;
+  r->humidite = 50;
+  r->humeur = 100;
+  r->event = REPTILE_EVENT_NONE;
+  r->last_update = time(NULL);
+}
 
 esp_err_t reptile_init(reptile_t *r) {
   if (!r) {
@@ -25,13 +40,7 @@ esp_err_t reptile_init(reptile_t *r) {
   }
   s_sensors_ready = true;
 
-  r->faim = 100;
-  r->eau = 100;
-  r->temperature = 30;
-  r->humidite = 50;
-  r->humeur = 100;
-  r->event = REPTILE_EVENT_NONE;
-  r->last_update = time(NULL);
+  reptile_set_defaults(r);
 
   return ESP_OK;
 }
@@ -72,7 +81,7 @@ void reptile_update(reptile_t *r, uint32_t elapsed_ms) {
   r->last_update += (time_t)decay;
 }
 
-esp_err_t reptile_save(reptile_t *r) {
+static esp_err_t reptile_save_nvs(reptile_t *r) {
   if (!r) {
     return ESP_ERR_INVALID_ARG;
   }
@@ -89,19 +98,49 @@ esp_err_t reptile_save(reptile_t *r) {
   return err;
 }
 
+esp_err_t reptile_save_sd(reptile_t *r) {
+  if (!r) {
+    return ESP_ERR_INVALID_ARG;
+  }
+  FILE *f = fopen("/sd/reptile_save.bin", "wb");
+  if (!f) {
+    ESP_LOGE(TAG, "Impossible d'ouvrir le fichier de sauvegarde SD");
+    return ESP_FAIL;
+  }
+  size_t written = fwrite(r, sizeof(reptile_t), 1, f);
+  fclose(f);
+  if (written != 1) {
+    ESP_LOGE(TAG, "Écriture incomplète de la sauvegarde SD");
+    return ESP_FAIL;
+  }
+  return ESP_OK;
+}
+
 esp_err_t reptile_load(reptile_t *r) {
   if (!r) {
     return ESP_ERR_INVALID_ARG;
   }
-  nvs_handle_t handle;
-  esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READONLY, &handle);
-  if (err != ESP_OK) {
-    return err;
+  FILE *f = fopen("/sd/reptile_save.bin", "rb");
+  if (!f) {
+    ESP_LOGW(TAG, "Sauvegarde SD absente");
+    reptile_set_defaults(r);
+    return ESP_FAIL;
   }
-  size_t size = sizeof(reptile_t);
-  err = nvs_get_blob(handle, "state", r, &size);
-  nvs_close(handle);
-  return err;
+  size_t read = fread(r, sizeof(reptile_t), 1, f);
+  fclose(f);
+  if (read != 1) {
+    ESP_LOGW(TAG, "Sauvegarde SD corrompue");
+    reptile_set_defaults(r);
+    return ESP_FAIL;
+  }
+  return ESP_OK;
+}
+
+esp_err_t reptile_save(reptile_t *r) {
+  if (reptile_game_is_active()) {
+    return reptile_save_sd(r);
+  }
+  return reptile_save_nvs(r);
 }
 
 void reptile_feed(reptile_t *r) {
