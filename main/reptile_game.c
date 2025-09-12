@@ -334,6 +334,11 @@ static void ui_update_main(void) {
   lv_bar_set_value(bar_temp, reptile.temperature, LV_ANIM_ON);
   lv_bar_set_value(bar_humidite, reptile.humidite, LV_ANIM_ON);
   lv_bar_set_value(bar_humeur, reptile.humeur, LV_ANIM_ON);
+  set_bar_color(bar_faim, reptile.faim, 100);
+  set_bar_color(bar_eau, reptile.eau, 100);
+  set_bar_color(bar_temp, reptile.temperature, 50);
+  set_bar_color(bar_humidite, reptile.humidite, 100);
+  set_bar_color(bar_humeur, reptile.humeur, 100);
   update_sprite();
 }
 
