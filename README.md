@@ -59,10 +59,11 @@ flowchart TD
 ```
 
 ### Chemins de sauvegarde et tests `sim_api`
-Le module de logique reptile enregistre son état sur la carte SD dans des emplacements distincts :
+Le module de logique reptile enregistre son état sur la carte SD dans des emplacements distincts,
+ancrés sur le point de montage défini par `MOUNT_POINT` (par défaut `"/sdcard"`) :
 
-- **Simulation** : `/sd/sim/reptile_state.bin`
-- **Réel** : `/sd/real/reptile_state.bin`
+- **Simulation** : `/sdcard/sim/reptile_state.bin`
+- **Réel** : `/sdcard/real/reptile_state.bin`
 
 Pour valider les pilotes simulés depuis un PC, l'en-tête `sim_api.h` expose des points d'injection
 (`sensors_sim_set_temperature`, `sensors_sim_set_humidity`) et d'observation
