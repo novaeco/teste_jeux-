@@ -6,6 +6,9 @@
 #include "logging.h"
 #include "esp_log.h"
 #include "game_mode.h"
+#include "ui_sprite.h"
+#include "LGFX_S3_RGB.hpp"
+#include <stdio.h>
 #include <inttypes.h>
 #include <stdbool.h>
 
@@ -84,6 +87,8 @@ void reptile_game_init(void) {
   if (reptile_load(&reptile) != ESP_OK) {
     reptile_save(&reptile);
   }
+
+  ui_sprite_init(lgfx.width(), lgfx.height());
 }
 
 const reptile_t *reptile_get_state(void) { return &reptile; }
@@ -285,6 +290,14 @@ void reptile_tick(lv_timer_t *timer) {
       reptile.temperature >= REPTILE_TEMP_THRESHOLD_HIGH) {
     start_warning_anim(bar_temp);
   }
+
+  LGFX_Sprite *spr = ui_sprite_get_back();
+  spr->fillScreen(0x0000);
+  char buf[32];
+  snprintf(buf, sizeof(buf), "Humeur:%u", (unsigned)reptile.humeur);
+  spr->setTextColor(0xFFFF);
+  spr->drawString(buf, 10, 10);
+  ui_sprite_push();
 }
 
 static void stats_btn_event_cb(lv_event_t *e) {

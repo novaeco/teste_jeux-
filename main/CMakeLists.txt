@@ -16,11 +16,14 @@ idf_component_register(
         logging
         can
         gpio
+        gui_paint
     PRIV_REQUIRES
         image
         sensors
     WHOLE_ARCHIVE
 )
+
+set_source_files_properties(reptile_game.c PROPERTIES LANGUAGE CXX)
 
 if(TARGET lvgl__lvgl)
     idf_component_get_property(lvgl_lib lvgl__lvgl COMPONENT_LIB)
