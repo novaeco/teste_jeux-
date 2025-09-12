@@ -21,6 +21,7 @@ static lv_obj_t *bar_humeur;
 static lv_obj_t *bar_humidite;
 static lv_obj_t *img_reptile;
 static bool sprite_is_happy;
+static bool s_game_active;
 static lv_obj_t *label_stat_faim;
 static lv_obj_t *label_stat_eau;
 static lv_obj_t *label_stat_temp;
