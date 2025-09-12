@@ -4,6 +4,7 @@
 #include "gpio.h"
 #include "sensors.h"
 #include "game_mode.h"
+#include "sd.h"
 #include <stdbool.h>
 #include <math.h>
 #include <stdio.h>
@@ -11,10 +12,14 @@
 #include <errno.h>
 
 static const char *get_save_path(void) {
+  static char path[64];
+  const char *base = MOUNT_POINT;
   if (game_mode_get() == GAME_MODE_SIMULATION) {
-    return "/sd/sim/reptile_state.bin";
+    snprintf(path, sizeof(path), "%s/sim/reptile_state.bin", base);
+  } else {
+    snprintf(path, sizeof(path), "%s/real/reptile_state.bin", base);
   }
-  return "/sd/real/reptile_state.bin";
+  return path;
 }
 
 static const char *TAG = "reptile_logic";
@@ -29,11 +34,16 @@ esp_err_t reptile_init(reptile_t *r, bool simulation) {
     return ESP_ERR_INVALID_ARG;
   }
 
-  if (mkdir("/sd/sim", 0777) != 0 && errno != EEXIST) {
-    ESP_LOGW(TAG, "Création du répertoire /sd/sim échouée");
+  const char *base = MOUNT_POINT;
+  char sim_dir[64];
+  char real_dir[64];
+  snprintf(sim_dir, sizeof(sim_dir), "%s/sim", base);
+  snprintf(real_dir, sizeof(real_dir), "%s/real", base);
+  if (mkdir(sim_dir, 0777) != 0 && errno != EEXIST) {
+    ESP_LOGW(TAG, "Création du répertoire %s échouée", sim_dir);
   }
-  if (mkdir("/sd/real", 0777) != 0 && errno != EEXIST) {
-    ESP_LOGW(TAG, "Création du répertoire /sd/real échouée");
+  if (mkdir(real_dir, 0777) != 0 && errno != EEXIST) {
+    ESP_LOGW(TAG, "Création du répertoire %s échouée", real_dir);
   }
 
   s_simulation_mode = simulation;
