@@ -94,7 +94,7 @@ void reptile_game_init(void) {
 const reptile_t *reptile_get_state(void) { return &reptile; }
 
 static void warning_anim_cb(void *obj, int32_t v) {
-  lv_obj_set_style_bg_opa(obj, (lv_opa_t)v, LV_PART_MAIN);
+  lv_obj_set_style_bg_opa((lv_obj_t *)obj, (lv_opa_t)v, LV_PART_MAIN);
 }
 
 static void start_warning_anim(lv_obj_t *obj) {
