@@ -262,8 +262,8 @@ void reptile_tick(lv_timer_t *timer) {
   // Broadcast reptile state over CAN bus
   can_message_t msg = {
       .identifier = 0x100,
-      .data_length_code = 8,
       .flags = TWAI_MSG_FLAG_NONE,
+      .data_length_code = 8
   };
   msg.data[0] = (uint8_t)(reptile.faim & 0xFF);
   msg.data[1] = (uint8_t)((reptile.faim >> 8) & 0xFF);
