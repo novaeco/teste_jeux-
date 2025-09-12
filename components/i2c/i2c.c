@@ -29,6 +29,10 @@ DEV_I2C_Port handle;
  */
 DEV_I2C_Port DEV_I2C_Init()
 {
+    if (handle.bus != NULL) {
+        return handle;
+    }
+
     // Define I2C bus configuration parameters
     i2c_master_bus_config_t i2c_bus_config = {
         .clk_source = I2C_CLK_SRC_DEFAULT,       // Default clock source for I2C
@@ -38,9 +42,13 @@ DEV_I2C_Port DEV_I2C_Init()
         .glitch_ignore_cnt = 7,                  // Ignore glitches in the I2C signal
     };
 
-    // Create a new I2C master bus with the above configuration
-    ESP_ERROR_CHECK(i2c_new_master_bus(&i2c_bus_config, &handle.bus));
-    
+    esp_err_t ret = i2c_new_master_bus(&i2c_bus_config, &handle.bus);
+    if (ret == ESP_ERR_INVALID_STATE) {
+        ESP_LOGW(TAG, "I2C bus already initialized");
+    } else {
+        ESP_ERROR_CHECK(ret);
+    }
+
     // No device is added here; handle.dev remains NULL until configured
     handle.dev = NULL;
 
