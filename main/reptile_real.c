@@ -1,5 +1,5 @@
 #include "reptile_real.h"
-#include "env_control/env_control.h"
+#include "env_control.h"
 #include "gpio.h"
 #include "sensors.h"
 #include "lvgl.h"
