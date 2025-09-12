@@ -32,6 +32,7 @@ extern lv_obj_t *menu_screen;
 #define REPTILE_UPDATE_PERIOD_MS 1000
 
 static reptile_t reptile;
+static const bool kSimulationMode = true;
 static uint32_t last_tick;
 static lv_timer_t *life_timer;
 static lv_timer_t *action_timer;
@@ -40,7 +41,7 @@ static uint32_t update_ms_accum;
 static uint32_t soothe_ms_accum;
 
 static const char *TAG = "reptile_game";
-static bool s_game_active;
+
 
 typedef enum {
   ACTION_FEED,
@@ -74,19 +75,16 @@ static void revert_sprite_cb(lv_timer_t *t);
 bool reptile_game_is_active(void) { return s_game_active; }
 
 void reptile_game_init(void) {
-  g_game_mode = GAME_MODE_REAL;
-  esp_err_t err = reptile_init(&reptile);
-  if (err == ESP_ERR_NOT_FOUND) {
-    g_game_mode = GAME_MODE_SIMULATION;
-    err = reptile_init(&reptile);
-  }
+
+  reptile_init(&reptile, kSimulationMode);
   last_tick = lv_tick_get();
   update_ms_accum = 0;
   soothe_ms_accum = 0;
-  if (err != ESP_OK) {
+  if (!reptile_sensors_available()) {
     lv_obj_t *mbox = lv_msgbox_create(NULL);
-    lv_msgbox_add_title(mbox, "Erreur");
-    lv_msgbox_add_text(mbox, "Initialisation reptile échouée");
+    lv_msgbox_add_title(mbox, "Info");
+    lv_msgbox_add_text(mbox, "Pas de capteur");
+
     lv_msgbox_add_close_button(mbox);
     lv_obj_center(mbox);
   }
@@ -382,24 +380,39 @@ static void menu_btn_event_cb(lv_event_t *e) {
 static void ui_update_main(void) {
   lv_bar_set_value(bar_faim, reptile.faim, LV_ANIM_ON);
   lv_bar_set_value(bar_eau, reptile.eau, LV_ANIM_ON);
-  lv_bar_set_value(bar_temp, reptile.temperature, LV_ANIM_ON);
-  lv_bar_set_value(bar_humidite, reptile.humidite, LV_ANIM_ON);
   lv_bar_set_value(bar_humeur, reptile.humeur, LV_ANIM_ON);
   set_bar_color(bar_faim, reptile.faim, 100);
   set_bar_color(bar_eau, reptile.eau, 100);
-  set_bar_color(bar_temp, reptile.temperature, 50);
-  set_bar_color(bar_humidite, reptile.humidite, 100);
   set_bar_color(bar_humeur, reptile.humeur, 100);
+
+  if (reptile_sensors_available()) {
+    lv_bar_set_value(bar_temp, reptile.temperature, LV_ANIM_ON);
+    lv_bar_set_value(bar_humidite, reptile.humidite, LV_ANIM_ON);
+    set_bar_color(bar_temp, reptile.temperature, 50);
+    set_bar_color(bar_humidite, reptile.humidite, 100);
+  } else {
+    lv_bar_set_value(bar_temp, 0, LV_ANIM_OFF);
+    lv_bar_set_value(bar_humidite, 0, LV_ANIM_OFF);
+    lv_obj_set_style_bg_color(bar_temp, lv_palette_main(LV_PALETTE_GREY),
+                              LV_PART_INDICATOR);
+    lv_obj_set_style_bg_color(bar_humidite, lv_palette_main(LV_PALETTE_GREY),
+                              LV_PART_INDICATOR);
+  }
   update_sprite();
 }
 
 static void ui_update_stats(void) {
   lv_label_set_text_fmt(label_stat_faim, "Faim: %" PRIu32, reptile.faim);
   lv_label_set_text_fmt(label_stat_eau, "Eau: %" PRIu32, reptile.eau);
-  lv_label_set_text_fmt(label_stat_temp, "Température: %" PRIu32,
-                        reptile.temperature);
-  lv_label_set_text_fmt(label_stat_humidite, "Humidité: %" PRIu32,
-                        reptile.humidite);
+  if (reptile_sensors_available()) {
+    lv_label_set_text_fmt(label_stat_temp, "Température: %" PRIu32,
+                          reptile.temperature);
+    lv_label_set_text_fmt(label_stat_humidite, "Humidité: %" PRIu32,
+                          reptile.humidite);
+  } else {
+    lv_label_set_text(label_stat_temp, "Température: pas de capteur");
+    lv_label_set_text(label_stat_humidite, "Humidité: pas de capteur");
+  }
   lv_label_set_text_fmt(label_stat_humeur, "Humeur: %" PRIu32, reptile.humeur);
 }
 

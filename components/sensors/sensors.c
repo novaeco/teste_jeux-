@@ -77,9 +77,7 @@ float sensors_read_temperature(void)
     }
 
     if (count == 0) {
-        if (g_game_mode == GAME_MODE_SIMULATION) {
-            return 28.0f + (esp_random() % 500) / 100.0f;
-        }
+
         ESP_LOGW(TAG, "No temperature sensor available");
         return NAN;
     }
@@ -90,9 +88,7 @@ float sensors_read_temperature(void)
 float sensors_read_humidity(void)
 {
     if (sht31_dev == NULL) {
-        if (g_game_mode == GAME_MODE_SIMULATION) {
-            return 40.0f + (esp_random() % 2000) / 100.0f;
-        }
+
         return NAN;
     }
 

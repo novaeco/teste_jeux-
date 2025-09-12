@@ -34,7 +34,7 @@ typedef enum {
   REPTILE_HUMEUR_THRESHOLD = 40,
 } reptile_threshold_t;
 
-esp_err_t reptile_init(reptile_t *r);
+esp_err_t reptile_init(reptile_t *r, bool simulation);
 void reptile_update(reptile_t *r, uint32_t elapsed_ms);
 esp_err_t reptile_load(reptile_t *r);
 esp_err_t reptile_save_sd(reptile_t *r);
