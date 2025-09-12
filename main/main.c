@@ -76,6 +76,7 @@ static void sleep_timer_cb(lv_timer_t *timer);
 
 static void start_game_mode(void) {
   reptile_game_stop();
+  reptile_game_init();
   reptile_game_start(panel_handle, tp_handle);
   logging_init(reptile_get_state);
   if (!sleep_timer)
