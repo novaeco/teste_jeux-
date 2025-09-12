@@ -3,7 +3,6 @@
 #include "esp_random.h"
 #include "gpio.h"
 #include "sensors.h"
-#include "game_mode.h"
 #include "sd.h"
 #include <stdbool.h>
 #include <math.h>
@@ -11,21 +10,21 @@
 #include <sys/stat.h>
 #include <errno.h>
 
+static const char *TAG = "reptile_logic";
+static bool s_sensors_ready = false;
+static bool s_simulation_mode = false;
+static bool log_once = false;
+
 static const char *get_save_path(void) {
   static char path[64];
   const char *base = MOUNT_POINT;
-  if (game_mode_get() == GAME_MODE_SIMULATION) {
+  if (s_simulation_mode) {
     snprintf(path, sizeof(path), "%s/sim/reptile_state.bin", base);
   } else {
     snprintf(path, sizeof(path), "%s/real/reptile_state.bin", base);
   }
   return path;
 }
-
-static const char *TAG = "reptile_logic";
-static bool s_sensors_ready = false;
-static bool s_simulation_mode = false;
-static bool log_once = false;
 
 static void reptile_set_defaults(reptile_t *r);
 
@@ -85,7 +84,7 @@ void reptile_update(reptile_t *r, uint32_t elapsed_ms) {
   r->eau = (r->eau > decay) ? (r->eau - decay) : 0;
   r->humeur = (r->humeur > decay) ? (r->humeur - decay) : 0;
 
-  if (game_mode_get() == GAME_MODE_SIMULATION) {
+  if (s_simulation_mode) {
     uint32_t randv = esp_random();
     float temp = 26.0f + (float)(randv % 80) / 10.0f; /* 26.0 - 33.9 */
     randv = esp_random();
@@ -108,11 +107,9 @@ void reptile_update(reptile_t *r, uint32_t elapsed_ms) {
         hum = 100.f;
       r->humidite = (uint32_t)hum;
     }
-  } else {
-    if (!log_once) {
-      ESP_LOGW(TAG, "Capteurs indisponibles");
-      log_once = true;
-    }
+  } else if (!s_simulation_mode && !s_sensors_ready && !log_once) {
+    ESP_LOGW(TAG, "Capteurs indisponibles");
+    log_once = true;
   }
 
   r->last_update += (time_t)decay;
@@ -223,5 +220,5 @@ reptile_event_t reptile_check_events(reptile_t *r) {
 }
 
 bool reptile_sensors_available(void) {
-  return (game_mode_get() != GAME_MODE_SIMULATION) && s_sensors_ready;
+  return !s_simulation_mode && s_sensors_ready;
 }
