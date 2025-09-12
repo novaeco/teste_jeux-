@@ -7,8 +7,15 @@
 #include <stdbool.h>
 #include <math.h>
 #include <stdio.h>
+#include <sys/stat.h>
+#include <errno.h>
 
-#define SAVE_PATH "/sd/reptile_state.bin"
+static const char *get_save_path(void) {
+  if (game_mode_get() == GAME_MODE_SIMULATION) {
+    return "/sd/sim/reptile_state.bin";
+  }
+  return "/sd/real/reptile_state.bin";
+}
 
 static const char *TAG = "reptile_logic";
 static bool s_sensors_ready = false;
@@ -20,6 +27,13 @@ static void reptile_set_defaults(reptile_t *r);
 esp_err_t reptile_init(reptile_t *r, bool simulation) {
   if (!r) {
     return ESP_ERR_INVALID_ARG;
+  }
+
+  if (mkdir("/sd/sim", 0777) != 0 && errno != EEXIST) {
+    ESP_LOGW(TAG, "Création du répertoire /sd/sim échouée");
+  }
+  if (mkdir("/sd/real", 0777) != 0 && errno != EEXIST) {
+    ESP_LOGW(TAG, "Création du répertoire /sd/real échouée");
   }
 
   s_simulation_mode = simulation;
@@ -94,11 +108,12 @@ void reptile_update(reptile_t *r, uint32_t elapsed_ms) {
   r->last_update += (time_t)decay;
 }
 
-esp_err_t reptile_save_sd(reptile_t *r) {
+esp_err_t reptile_save(reptile_t *r) {
   if (!r) {
     return ESP_ERR_INVALID_ARG;
   }
-  FILE *f = fopen(SAVE_PATH, "wb");
+  const char *path = get_save_path();
+  FILE *f = fopen(path, "wb");
   if (!f) {
     ESP_LOGE(TAG, "Impossible d'ouvrir le fichier de sauvegarde SD");
     return ESP_FAIL;
@@ -112,18 +127,12 @@ esp_err_t reptile_save_sd(reptile_t *r) {
   return ESP_OK;
 }
 
-esp_err_t reptile_save(reptile_t *r) {
-  if (!r) {
-    return ESP_ERR_INVALID_ARG;
-  }
-  return reptile_save_sd(r);
-}
-
 esp_err_t reptile_load(reptile_t *r) {
   if (!r) {
     return ESP_ERR_INVALID_ARG;
   }
-  FILE *f = fopen(SAVE_PATH, "rb");
+  const char *path = get_save_path();
+  FILE *f = fopen(path, "rb");
   if (!f) {
     return ESP_FAIL;
   }
