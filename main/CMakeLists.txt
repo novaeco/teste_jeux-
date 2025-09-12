@@ -13,7 +13,10 @@ idf_component_register(
         sd
         logging
         can
-    PRIV_REQUIRES image
+        gpio
+    PRIV_REQUIRES
+        image
+        sensors
     WHOLE_ARCHIVE
 )
 
