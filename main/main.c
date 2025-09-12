@@ -33,6 +33,7 @@
 #include "reptile_game.h" // Reptile game interface
 #include "sd.h"
 #include "sleep.h" // Sleep control interface
+#include "settings.h"     // Application settings
 
 static const char *TAG = "main"; // Tag for logging
 
@@ -60,14 +61,6 @@ static void save_last_mode(uint8_t mode) {
   }
 }
 
-static void settings_screen_show(void) {
-  lv_obj_t *mbox = lv_msgbox_create(NULL);
-  lv_msgbox_add_title(mbox, "Param\u00e8tres");
-  lv_msgbox_add_text(mbox, "Interface de configuration à impl\u00e9menter");
-  lv_msgbox_add_close_button(mbox);
-  lv_obj_center(mbox);
-}
-
 static void reptile_real_start(esp_lcd_panel_handle_t panel,
                                esp_lcd_touch_handle_t tp) {
   (void)panel;
@@ -86,11 +79,7 @@ static void start_game_mode(void) {
   logging_init(reptile_get_state);
   if (!sleep_timer)
     sleep_timer = lv_timer_create(sleep_timer_cb, 120000, NULL);
-#ifdef CONFIG_REPTILE_DEBUG
-  sleep_set_enabled(false);
-#else
-  sleep_set_enabled(true);
-#endif
+  sleep_set_enabled(g_settings.sleep_default);
 }
 
 static void menu_btn_game_cb(lv_event_t *e) {
@@ -276,6 +265,9 @@ void app_main() {
     ret = nvs_flash_init();
   }
   ESP_ERROR_CHECK(ret);
+
+  // Load persisted application settings
+  settings_init();
 
   // Initialize SD card at boot for early log availability
   esp_err_t sd_ret = sd_mmc_init();
