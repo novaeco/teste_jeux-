@@ -38,7 +38,7 @@ static void flush_callback(lv_display_t *disp, const lv_area_t *area, uint8_t *p
 static lv_display_t *display_init(esp_lcd_panel_handle_t panel_handle)
 {
     size_t buffer_size = LVGL_PORT_H_RES * LVGL_PORT_BUFFER_HEIGHT;
-    lv_color_t *buf1 = heap_caps_malloc(buffer_size * sizeof(lv_color_t), LVGL_PORT_BUFFER_MALLOC_CAPS);
+    lv_color_t *buf1 = (lv_color_t *)heap_caps_malloc(buffer_size * sizeof(lv_color_t), LVGL_PORT_BUFFER_MALLOC_CAPS);
     assert(buf1);
 
     lv_display_t *disp = lv_display_create(LVGL_PORT_H_RES, LVGL_PORT_V_RES);
@@ -54,7 +54,7 @@ static lv_display_t *display_init(esp_lcd_panel_handle_t panel_handle)
  */
 static void touchpad_read(lv_indev_t *indev, lv_indev_data_t *data)
 {
-    esp_lcd_touch_handle_t tp = lv_indev_get_user_data(indev);
+    esp_lcd_touch_handle_t tp = (esp_lcd_touch_handle_t)lv_indev_get_user_data(indev);
     assert(tp);
 
     uint16_t touchpad_x;
