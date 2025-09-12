@@ -1,6 +1,7 @@
 #pragma once
 
 #include "lvgl.h"
+#include "lvgl/src/draw/lv_draw.h"
 
 #ifdef __cplusplus
 extern "C" {
