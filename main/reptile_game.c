@@ -3,6 +3,7 @@
 #include "image.h"
 #include "lvgl_port.h"
 #include "sleep.h"
+#include "logging.h"
 #include <inttypes.h>
 #include <stdbool.h>
 
@@ -22,6 +23,7 @@ static lv_obj_t *label_stat_eau;
 static lv_obj_t *label_stat_temp;
 static lv_obj_t *label_stat_humeur;
 static lv_obj_t *lbl_sleep;
+extern lv_obj_t *menu_screen;
 
 #define REPTILE_UPDATE_PERIOD_MS 1000
 
@@ -51,6 +53,7 @@ static void stats_btn_event_cb(lv_event_t *e);
 static void back_btn_event_cb(lv_event_t *e);
 static void action_btn_event_cb(lv_event_t *e);
 static void sleep_btn_event_cb(lv_event_t *e);
+static void menu_btn_event_cb(lv_event_t *e);
 static void ui_update_main(void);
 static void ui_update_stats(void);
 static void show_event_popup(reptile_event_t event);
@@ -293,6 +296,23 @@ static void sleep_btn_event_cb(lv_event_t *e) {
   lv_label_set_text(lbl_sleep, sleep_is_enabled() ? "Veille ON" : "Veille OFF");
 }
 
+static void menu_btn_event_cb(lv_event_t *e) {
+  (void)e;
+  if (lvgl_port_lock(-1)) {
+    if (life_timer) {
+      lv_timer_del(life_timer);
+      life_timer = NULL;
+    }
+    if (action_timer) {
+      lv_timer_del(action_timer);
+      action_timer = NULL;
+    }
+    logging_pause();
+    lv_scr_load(menu_screen);
+    lvgl_port_unlock();
+  }
+}
+
 static void ui_update_main(void) {
   lv_bar_set_value(bar_faim, reptile.faim, LV_ANIM_ON);
   lv_bar_set_value(bar_eau, reptile.eau, LV_ANIM_ON);
@@ -432,6 +452,16 @@ void reptile_game_start(esp_lcd_panel_handle_t panel,
   lv_obj_add_style(lbl_stats, &style_font24, 0);
   lv_label_set_text(lbl_stats, "Statistiques");
   lv_obj_center(lbl_stats);
+
+  /* Menu button */
+  lv_obj_t *btn_menu = lv_btn_create(screen_main);
+  lv_obj_set_size(btn_menu, 160, 40);
+  lv_obj_align(btn_menu, LV_ALIGN_TOP_RIGHT, -10, 110);
+  lv_obj_add_event_cb(btn_menu, menu_btn_event_cb, LV_EVENT_CLICKED, NULL);
+  lv_obj_t *lbl_menu = lv_label_create(btn_menu);
+  lv_obj_add_style(lbl_menu, &style_font24, 0);
+  lv_label_set_text(lbl_menu, "Menu");
+  lv_obj_center(lbl_menu);
 
   /* Stats screen content */
   label_stat_faim = lv_label_create(screen_stats);

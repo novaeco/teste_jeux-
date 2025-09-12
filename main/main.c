@@ -43,6 +43,7 @@ static esp_lcd_panel_handle_t panel_handle = NULL;
 static esp_lcd_touch_handle_t tp_handle = NULL;
 static lv_obj_t *error_screen;
 static lv_obj_t *prev_screen;
+lv_obj_t *menu_screen;
 
 enum {
   APP_MODE_GAME = 1,
@@ -323,7 +324,7 @@ void app_main() {
   // Lock the mutex because LVGL APIs are not thread-safe
   if (lvgl_port_lock(-1)) {
     // Create main menu screen
-    lv_obj_t *menu_screen = lv_obj_create(NULL);
+    menu_screen = lv_obj_create(NULL);
 
     lv_obj_t *btn_game = lv_btn_create(menu_screen);
     lv_obj_set_size(btn_game, 200, 50);
