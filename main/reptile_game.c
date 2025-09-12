@@ -33,7 +33,6 @@ extern lv_obj_t *menu_screen;
 #define REPTILE_UPDATE_PERIOD_MS 1000
 
 static reptile_t reptile;
-static const bool kSimulationMode = true;
 static uint32_t last_tick;
 static lv_timer_t *life_timer;
 static lv_timer_t *action_timer;
@@ -77,7 +76,8 @@ bool reptile_game_is_active(void) { return s_game_active; }
 
 void reptile_game_init(void) {
 
-  reptile_init(&reptile, kSimulationMode);
+  game_mode_set(GAME_MODE_SIMULATION);
+  reptile_init(&reptile, true);
   last_tick = lv_tick_get();
   update_ms_accum = 0;
   soothe_ms_accum = 0;
