@@ -73,6 +73,17 @@ static void gpio_real_heat(void)
     gpio_set_level(HEAT_RES_PIN, 0);
 }
 
+static esp_err_t gpio_real_init(void)
+{
+    gpio_real_mode(SERVO_FEED_PIN, GPIO_MODE_OUTPUT);
+    gpio_real_mode(WATER_PUMP_PIN, GPIO_MODE_OUTPUT);
+    gpio_real_mode(HEAT_RES_PIN, GPIO_MODE_OUTPUT);
+    gpio_real_write(SERVO_FEED_PIN, 0);
+    gpio_real_write(WATER_PUMP_PIN, 0);
+    gpio_real_write(HEAT_RES_PIN, 0);
+    return ESP_OK;
+}
+
 static void gpio_real_deinit(void)
 {
     gpio_real_write(WATER_PUMP_PIN, 0);
@@ -85,6 +96,7 @@ static void gpio_real_deinit(void)
 }
 
 const actuator_driver_t gpio_real_driver = {
+    .init = gpio_real_init,
     .gpio_mode = gpio_real_mode,
     .gpio_int = gpio_real_int,
     .digital_write = gpio_real_write,
