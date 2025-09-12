@@ -5,6 +5,7 @@
 #include "lvgl_port.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "settings.h"
 
 static lv_obj_t *screen;
 static lv_obj_t *label_temp;
@@ -16,6 +17,8 @@ static lv_timer_t *update_timer;
 static volatile bool pump_running;
 static volatile bool heat_running;
 static volatile bool feed_running;
+static bool pump_auto_active;
+static bool heat_auto_active;
 static TaskHandle_t pump_task_handle;
 static TaskHandle_t heat_task_handle;
 static TaskHandle_t feed_task_handle;
@@ -27,13 +30,39 @@ static void update_status_labels(void) {
   float hum = sensors_read_humidity();
   lv_label_set_text_fmt(label_temp, "Temp\u00e9rature: %.1f \u00b0C", temp);
   lv_label_set_text_fmt(label_hum, "Humidit\u00e9: %.1f %%", hum);
-  lv_label_set_text(label_pump, pump_running ? "Pompe: ON" : "Pompe: OFF");
-  lv_label_set_text(label_heat, heat_running ? "Chauffage: ON" : "Chauffage: OFF");
+  lv_label_set_text(label_pump,
+                    pump_running    ? "Pompe: ON" :
+                    pump_auto_active? "Pompe: AUTO" : "Pompe: OFF");
+  lv_label_set_text(label_heat,
+                    heat_running    ? "Chauffage: ON" :
+                    heat_auto_active? "Chauffage: AUTO" : "Chauffage: OFF");
   lv_label_set_text(label_feed, feed_running ? "Nourrissage: ON" : "Nourrissage: OFF");
 }
 
 static void sensor_timer_cb(lv_timer_t *t) {
   (void)t;
+
+  float temp = sensors_read_temperature();
+  float hum = sensors_read_humidity();
+
+  /* Gestion du chauffage avec hystérésis ±1 °C */
+  if (temp <= g_settings.temp_threshold - 1) {
+    heat_auto_active = true;
+  } else if (temp >= g_settings.temp_threshold + 1) {
+    heat_auto_active = false;
+  }
+  if (heat_auto_active && !heat_running)
+    xTaskCreate(heat_task, "heat_task", 2048, NULL, 5, &heat_task_handle);
+
+  /* Gestion de l'humidité avec hystérésis ±5 % HR */
+  if (hum <= g_settings.humidity_threshold - 5) {
+    pump_auto_active = true;
+  } else if (hum >= g_settings.humidity_threshold + 5) {
+    pump_auto_active = false;
+  }
+  if (pump_auto_active && !pump_running)
+    xTaskCreate(pump_task, "pump_task", 2048, NULL, 5, &pump_task_handle);
+
   update_status_labels();
 }
 
@@ -124,6 +153,8 @@ static void menu_btn_cb(lv_event_t *e) {
   pump_running = false;
   heat_running = false;
   feed_running = false;
+  pump_auto_active = false;
+  heat_auto_active = false;
   DEV_Digital_Write(WATER_PUMP_PIN, 0);
   DEV_Digital_Write(HEAT_RES_PIN, 0);
   DEV_Digital_Write(SERVO_FEED_PIN, 0);
