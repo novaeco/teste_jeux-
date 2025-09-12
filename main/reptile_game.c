@@ -299,6 +299,7 @@ static void sleep_btn_event_cb(lv_event_t *e) {
 }
 
 void reptile_game_stop(void) {
+  sleep_set_enabled(false);
   if (life_timer) {
     lv_timer_del(life_timer);
     life_timer = NULL;
