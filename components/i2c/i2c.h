@@ -48,6 +48,14 @@ typedef struct {
 DEV_I2C_Port DEV_I2C_Init();
 
 /**
+ * @brief Probe an I2C address to verify device presence.
+ *
+ * @param addr 7-bit I2C address to probe.
+ * @return esp_err_t ESP_OK if acknowledged, error code otherwise.
+ */
+esp_err_t DEV_I2C_Probe(uint8_t addr);
+
+/**
  * @brief Set a new I2C slave address for the device.
  * 
  * This function allows you to change the slave address of an I2C device during runtime.

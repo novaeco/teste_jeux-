@@ -56,6 +56,27 @@ DEV_I2C_Port DEV_I2C_Init()
 }
 
 /**
+ * @brief Probe an I2C address to check device presence.
+ *
+ * This helper wraps ::i2c_master_probe using the internally stored bus handle.
+ *
+ * @param addr 7-bit I2C address to probe.
+ * @return esp_err_t ESP_OK if the device acknowledges, error code otherwise.
+ */
+esp_err_t DEV_I2C_Probe(uint8_t addr)
+{
+    if (handle.bus == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    esp_err_t ret = i2c_master_probe(handle.bus, addr, 100);
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "I2C device 0x%02X not found: %s", addr, esp_err_to_name(ret));
+    }
+    return ret;
+}
+
+/**
  * @brief Set a new I2C slave address for the device.
  * 
  * This function allows changing the I2C slave address for the specified device.
