@@ -16,6 +16,9 @@ static lv_timer_t *update_timer;
 static volatile bool pump_running;
 static volatile bool heat_running;
 static volatile bool feed_running;
+static TaskHandle_t pump_task_handle;
+static TaskHandle_t heat_task_handle;
+static TaskHandle_t feed_task_handle;
 
 extern lv_obj_t *menu_screen;
 
@@ -47,6 +50,7 @@ static void pump_task(void *arg) {
     update_status_labels();
     lvgl_port_unlock();
   }
+  pump_task_handle = NULL;
   vTaskDelete(NULL);
 }
 
@@ -63,6 +67,7 @@ static void heat_task(void *arg) {
     update_status_labels();
     lvgl_port_unlock();
   }
+  heat_task_handle = NULL;
   vTaskDelete(NULL);
 }
 
@@ -79,35 +84,56 @@ static void feed_task(void *arg) {
     update_status_labels();
     lvgl_port_unlock();
   }
+  feed_task_handle = NULL;
   vTaskDelete(NULL);
 }
 
 static void pump_btn_cb(lv_event_t *e) {
   (void)e;
   if (!pump_running)
-    xTaskCreate(pump_task, "pump_task", 2048, NULL, 5, NULL);
+    xTaskCreate(pump_task, "pump_task", 2048, NULL, 5, &pump_task_handle);
 }
 
 static void heat_btn_cb(lv_event_t *e) {
   (void)e;
   if (!heat_running)
-    xTaskCreate(heat_task, "heat_task", 2048, NULL, 5, NULL);
+    xTaskCreate(heat_task, "heat_task", 2048, NULL, 5, &heat_task_handle);
 }
 
 static void feed_btn_cb(lv_event_t *e) {
   (void)e;
   if (!feed_running)
-    xTaskCreate(feed_task, "feed_task", 2048, NULL, 5, NULL);
+    xTaskCreate(feed_task, "feed_task", 2048, NULL, 5, &feed_task_handle);
 }
 
 static void menu_btn_cb(lv_event_t *e) {
   (void)e;
+  // Stop regulation tasks and ensure hardware is off
+  if (pump_task_handle) {
+    vTaskDelete(pump_task_handle);
+    pump_task_handle = NULL;
+  }
+  if (heat_task_handle) {
+    vTaskDelete(heat_task_handle);
+    heat_task_handle = NULL;
+  }
+  if (feed_task_handle) {
+    vTaskDelete(feed_task_handle);
+    feed_task_handle = NULL;
+  }
+  pump_running = false;
+  heat_running = false;
+  feed_running = false;
+  DEV_Digital_Write(WATER_PUMP_PIN, 0);
+  DEV_Digital_Write(HEAT_RES_PIN, 0);
+  DEV_Digital_Write(SERVO_FEED_PIN, 0);
+
   if (lvgl_port_lock(-1)) {
-    lv_scr_load(menu_screen);
     if (update_timer) {
       lv_timer_del(update_timer);
       update_timer = NULL;
     }
+    lv_scr_load(menu_screen);
     if (screen) {
       lv_obj_del(screen);
       screen = NULL;
