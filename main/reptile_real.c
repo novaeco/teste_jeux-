@@ -7,6 +7,10 @@
 #include "freertos/task.h"
 #include "settings.h"
 
+static void pump_task(void *arg);
+static void heat_task(void *arg);
+static void feed_task(void *arg);
+
 static lv_obj_t *screen;
 static lv_obj_t *label_temp;
 static lv_obj_t *label_hum;
