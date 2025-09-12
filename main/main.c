@@ -48,9 +48,11 @@ static lv_obj_t *prev_screen;
 lv_obj_t *menu_screen;
 
 enum {
+  APP_MODE_MENU = 0,
   APP_MODE_GAME = 1,
   APP_MODE_REAL = 2,
   APP_MODE_SETTINGS = 3,
+  APP_MODE_MENU_OVERRIDE = 0xFF,
 };
 
 // GPIO used at boot to ignore the persisted last mode when held low
@@ -65,8 +67,8 @@ static void save_last_mode(uint8_t mode) {
   }
 }
 
-// Public helper to reset the stored mode in NVS
-void reset_last_mode(void) { save_last_mode(0); }
+// Public helper to force the menu on next boot via NVS flag
+void reset_last_mode(void) { save_last_mode(APP_MODE_MENU_OVERRIDE); }
 
 static void sleep_timer_cb(lv_timer_t *timer);
 
@@ -342,19 +344,25 @@ void app_main() {
     lv_label_set_text(label, "Param\u00e8tres");
     lv_obj_center(label);
 
-    uint8_t last_mode = 0;
+    uint8_t last_mode = APP_MODE_MENU;
     nvs_handle_t nvs;
     if (nvs_open("cfg", NVS_READWRITE, &nvs) == ESP_OK) {
       nvs_get_u8(nvs, "last_mode", &last_mode);
       nvs_close(nvs);
     }
 
+    bool force_menu = (last_mode == APP_MODE_MENU_OVERRIDE);
+
     // If override button is held during boot, ignore stored mode
     gpio_reset_pin(MODE_OVERRIDE_BTN);
     gpio_set_direction(MODE_OVERRIDE_BTN, GPIO_MODE_INPUT);
     gpio_pullup_en(MODE_OVERRIDE_BTN);
     if (gpio_get_level(MODE_OVERRIDE_BTN) == 0) {
-      last_mode = 0;
+      force_menu = true;
+    }
+
+    if (force_menu) {
+      last_mode = APP_MODE_MENU;
     }
 
     switch (last_mode) {
