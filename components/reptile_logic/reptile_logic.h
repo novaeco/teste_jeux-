@@ -20,7 +20,7 @@ typedef struct {
   uint32_t faim;
   uint32_t eau;
   uint32_t temperature;
-  uint32_t humidite;
+  uint32_t humidite; /* pourcentage d'humidite */
   uint32_t humeur;
   reptile_event_t event;
   time_t last_update;
