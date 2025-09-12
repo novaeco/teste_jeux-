@@ -181,12 +181,16 @@ void reptile_real_start(esp_lcd_panel_handle_t panel, esp_lcd_touch_handle_t tp)
   (void)panel;
   (void)tp;
 
-  if (sensors_init() != ESP_OK) {
+  esp_err_t err = sensors_init();
+  if (err != ESP_OK) {
     lv_obj_t *mbox = lv_msgbox_create(NULL);
-    lv_msgbox_add_title(mbox, "Erreur");
-    lv_msgbox_add_text(mbox, "Capteurs non initialis\u00e9s");
-    lv_msgbox_add_close_button(mbox);
+    lv_msgbox_add_title(mbox, "Capteurs");
+    lv_msgbox_add_text(mbox, "Aucun capteur d\u00e9tect\u00e9. Connectez-les puis red\u00e9marrez.");
+    lv_msgbox_add_btns(mbox, (const char *[]){"Menu", ""}, 0);
     lv_obj_center(mbox);
+    lv_obj_add_event_cb(mbox, [](lv_event_t *e){
+      lv_scr_load(menu_screen);
+    }, LV_EVENT_VALUE_CHANGED, NULL);
     return;
   }
 
