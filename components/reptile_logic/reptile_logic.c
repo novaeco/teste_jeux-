@@ -4,6 +4,7 @@
 #include "nvs.h"
 #include "nvs_flash.h"
 #include "sensors.h"
+#include "game_mode.h"
 #include <stdbool.h>
 #include <math.h>
 #include <stdio.h>
@@ -33,12 +34,17 @@ esp_err_t reptile_init(reptile_t *r) {
     return ESP_ERR_INVALID_ARG;
   }
 
-  esp_err_t err = sensors_init();
-  if (err != ESP_OK) {
-    ESP_LOGE(TAG, "Capteurs non initialisés");
-    return err;
+  if (g_game_mode == GAME_MODE_SIMULATION) {
+    s_sensors_ready = false;
+  } else {
+    esp_err_t err = sensors_init();
+    if (err != ESP_OK) {
+      ESP_LOGE(TAG, "Capteurs non initialisés");
+      s_sensors_ready = false;
+      return err;
+    }
+    s_sensors_ready = true;
   }
-  s_sensors_ready = true;
 
   reptile_set_defaults(r);
 
@@ -56,7 +62,7 @@ void reptile_update(reptile_t *r, uint32_t elapsed_ms) {
   r->eau = (r->eau > decay) ? (r->eau - decay) : 0;
   r->humeur = (r->humeur > decay) ? (r->humeur - decay) : 0;
 
-  if (s_sensors_ready) {
+  if (s_sensors_ready || g_game_mode == GAME_MODE_SIMULATION) {
     float temp = sensors_read_temperature();
     float hum = sensors_read_humidity();
 

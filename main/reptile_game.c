@@ -5,6 +5,7 @@
 #include "sleep.h"
 #include "logging.h"
 #include "esp_log.h"
+#include "game_mode.h"
 #include <inttypes.h>
 #include <stdbool.h>
 
@@ -73,14 +74,19 @@ static void revert_sprite_cb(lv_timer_t *t);
 bool reptile_game_is_active(void) { return s_game_active; }
 
 void reptile_game_init(void) {
+  g_game_mode = GAME_MODE_REAL;
   esp_err_t err = reptile_init(&reptile);
+  if (err == ESP_ERR_NOT_FOUND) {
+    g_game_mode = GAME_MODE_SIMULATION;
+    err = reptile_init(&reptile);
+  }
   last_tick = lv_tick_get();
   update_ms_accum = 0;
   soothe_ms_accum = 0;
   if (err != ESP_OK) {
     lv_obj_t *mbox = lv_msgbox_create(NULL);
     lv_msgbox_add_title(mbox, "Erreur");
-    lv_msgbox_add_text(mbox, "Capteurs non initialisés");
+    lv_msgbox_add_text(mbox, "Initialisation reptile échouée");
     lv_msgbox_add_close_button(mbox);
     lv_obj_center(mbox);
   }
