@@ -31,6 +31,7 @@
 #include "nvs.h"          // NVS key-value API
 #include "nvs_flash.h"    // NVS flash for persistent storage
 #include "reptile_game.h" // Reptile game interface
+#include "reptile_real.h" // Real-world mode interface
 #include "sd.h"
 #include "sleep.h" // Sleep control interface
 #include "settings.h"     // Application settings
@@ -66,17 +67,6 @@ static void save_last_mode(uint8_t mode) {
 
 // Public helper to reset the stored mode in NVS
 void reset_last_mode(void) { save_last_mode(0); }
-
-static void reptile_real_start(esp_lcd_panel_handle_t panel,
-                               esp_lcd_touch_handle_t tp) {
-  (void)panel;
-  (void)tp;
-  lv_obj_t *mbox = lv_msgbox_create(NULL);
-  lv_msgbox_add_title(mbox, "Mode r\u00e9el");
-  lv_msgbox_add_text(mbox, "Mode r\u00e9el non impl\u00e9ment\u00e9");
-  lv_msgbox_add_close_button(mbox);
-  lv_obj_center(mbox);
-}
 
 static void sleep_timer_cb(lv_timer_t *timer);
 

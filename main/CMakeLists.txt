@@ -1,5 +1,5 @@
 idf_component_register(
-    SRCS "main.c" "reptile_game.c" "settings.c"
+    SRCS "main.c" "reptile_game.c" "settings.c" "reptile_real.c"
     INCLUDE_DIRS "."
     REQUIRES
         nvs_flash
