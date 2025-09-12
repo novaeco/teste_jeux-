@@ -88,7 +88,7 @@ void reptile_game_init(void) {
     reptile_save(&reptile);
   }
 
-  ui_sprite_init(lgfx.width(), lgfx.height());
+  ui_sprite_init(gfx.width(), gfx.height());
 }
 
 const reptile_t *reptile_get_state(void) { return &reptile; }

@@ -10,4 +10,4 @@ public:
     LGFX_S3_RGB();
 };
 
-extern LGFX_S3_RGB lgfx;
+extern LGFX_S3_RGB gfx;
