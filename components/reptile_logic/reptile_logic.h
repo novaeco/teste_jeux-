@@ -36,8 +36,9 @@ typedef enum {
 
 esp_err_t reptile_init(reptile_t *r, bool simulation);
 void reptile_update(reptile_t *r, uint32_t elapsed_ms);
-esp_err_t reptile_save(reptile_t *r);
 esp_err_t reptile_load(reptile_t *r);
+esp_err_t reptile_save_sd(reptile_t *r);
+esp_err_t reptile_save(reptile_t *r);
 void reptile_feed(reptile_t *r);
 void reptile_give_water(reptile_t *r);
 void reptile_heat(reptile_t *r);

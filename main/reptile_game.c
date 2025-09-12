@@ -5,6 +5,7 @@
 #include "sleep.h"
 #include "logging.h"
 #include "esp_log.h"
+#include "game_mode.h"
 #include <inttypes.h>
 #include <stdbool.h>
 
@@ -41,6 +42,7 @@ static uint32_t soothe_ms_accum;
 
 static const char *TAG = "reptile_game";
 
+
 typedef enum {
   ACTION_FEED,
   ACTION_WATER,
@@ -70,7 +72,10 @@ static void update_sprite(void);
 static void show_action_sprite(action_type_t action);
 static void revert_sprite_cb(lv_timer_t *t);
 
+bool reptile_game_is_active(void) { return s_game_active; }
+
 void reptile_game_init(void) {
+
   reptile_init(&reptile, kSimulationMode);
   last_tick = lv_tick_get();
   update_ms_accum = 0;
@@ -79,6 +84,7 @@ void reptile_game_init(void) {
     lv_obj_t *mbox = lv_msgbox_create(NULL);
     lv_msgbox_add_title(mbox, "Info");
     lv_msgbox_add_text(mbox, "Pas de capteur");
+
     lv_msgbox_add_close_button(mbox);
     lv_obj_center(mbox);
   }
@@ -337,6 +343,7 @@ static void sleep_btn_event_cb(lv_event_t *e) {
 }
 
 void reptile_game_stop(void) {
+  s_game_active = false;
   logging_pause();
   sleep_set_enabled(false);
   soothe_time_ms = 0;
@@ -413,6 +420,7 @@ void reptile_game_start(esp_lcd_panel_handle_t panel,
                         esp_lcd_touch_handle_t touch) {
   (void)panel;
   (void)touch;
+  s_game_active = true;
   lv_style_init(&style_font24);
   lv_style_set_text_font(&style_font24, &lv_font_montserrat_24);
 

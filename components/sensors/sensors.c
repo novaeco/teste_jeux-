@@ -3,6 +3,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
+#include "esp_random.h"
+#include "game_mode.h"
 #include <math.h>
 #include <stdbool.h>
 
@@ -75,6 +77,7 @@ float sensors_read_temperature(void)
     }
 
     if (count == 0) {
+
         ESP_LOGW(TAG, "No temperature sensor available");
         return NAN;
     }
@@ -85,6 +88,7 @@ float sensors_read_temperature(void)
 float sensors_read_humidity(void)
 {
     if (sht31_dev == NULL) {
+
         return NAN;
     }
 

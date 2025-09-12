@@ -3,6 +3,7 @@
 #include "esp_random.h"
 #include "gpio.h"
 #include "sensors.h"
+#include "game_mode.h"
 #include <stdbool.h>
 #include <math.h>
 #include <stdio.h>
@@ -13,6 +14,7 @@ static const char *TAG = "reptile_logic";
 static bool s_sensors_ready = false;
 static bool s_simulation_mode = false;
 static bool log_once = false;
+
 
 esp_err_t reptile_init(reptile_t *r, bool simulation) {
   if (!r) {
@@ -32,6 +34,8 @@ esp_err_t reptile_init(reptile_t *r, bool simulation) {
     s_sensors_ready = false;
   }
 
+
+static void reptile_set_defaults(reptile_t *r) {
   r->faim = 100;
   r->eau = 100;
   r->temperature = 30;
@@ -39,6 +43,26 @@ esp_err_t reptile_init(reptile_t *r, bool simulation) {
   r->humeur = 100;
   r->event = REPTILE_EVENT_NONE;
   r->last_update = time(NULL);
+}
+
+esp_err_t reptile_init(reptile_t *r) {
+  if (!r) {
+    return ESP_ERR_INVALID_ARG;
+  }
+
+  if (g_game_mode == GAME_MODE_SIMULATION) {
+    s_sensors_ready = false;
+  } else {
+    esp_err_t err = sensors_init();
+    if (err != ESP_OK) {
+      ESP_LOGE(TAG, "Capteurs non initialisés");
+      s_sensors_ready = false;
+      return err;
+    }
+    s_sensors_ready = true;
+  }
+
+  reptile_set_defaults(r);
 
   return ESP_OK;
 }
@@ -62,6 +86,7 @@ void reptile_update(reptile_t *r, uint32_t elapsed_ms) {
     r->temperature = (uint32_t)temp;
     r->humidite = (uint32_t)hum;
   } else if (s_sensors_ready) {
+
     float temp = sensors_read_temperature();
     float hum = sensors_read_humidity();
 
@@ -86,7 +111,7 @@ void reptile_update(reptile_t *r, uint32_t elapsed_ms) {
   r->last_update += (time_t)decay;
 }
 
-esp_err_t reptile_save(reptile_t *r) {
+static esp_err_t reptile_save_nvs(reptile_t *r) {
   if (!r) {
     return ESP_ERR_INVALID_ARG;
   }
@@ -100,6 +125,24 @@ esp_err_t reptile_save(reptile_t *r) {
   return (written == sizeof(reptile_t)) ? ESP_OK : ESP_FAIL;
 }
 
+esp_err_t reptile_save_sd(reptile_t *r) {
+  if (!r) {
+    return ESP_ERR_INVALID_ARG;
+  }
+  FILE *f = fopen("/sd/reptile_save.bin", "wb");
+  if (!f) {
+    ESP_LOGE(TAG, "Impossible d'ouvrir le fichier de sauvegarde SD");
+    return ESP_FAIL;
+  }
+  size_t written = fwrite(r, sizeof(reptile_t), 1, f);
+  fclose(f);
+  if (written != 1) {
+    ESP_LOGE(TAG, "Écriture incomplète de la sauvegarde SD");
+    return ESP_FAIL;
+  }
+  return ESP_OK;
+}
+
 esp_err_t reptile_load(reptile_t *r) {
   if (!r) {
     return ESP_ERR_INVALID_ARG;
@@ -111,6 +154,7 @@ esp_err_t reptile_load(reptile_t *r) {
   size_t read = fread(r, 1, sizeof(reptile_t), f);
   fclose(f);
   return (read == sizeof(reptile_t)) ? ESP_OK : ESP_FAIL;
+
 }
 
 void reptile_feed(reptile_t *r) {

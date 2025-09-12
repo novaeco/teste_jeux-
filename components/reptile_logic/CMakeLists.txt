@@ -1,6 +1,6 @@
 idf_component_register(
     SRCS "reptile_logic.c" "env_control.c"
     INCLUDE_DIRS "."
-    REQUIRES nvs_flash gpio
+    REQUIRES nvs_flash gpio config
     PRIV_REQUIRES sensors
 )
