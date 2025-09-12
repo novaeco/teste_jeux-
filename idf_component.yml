@@ -3,3 +3,5 @@ dependencies:
     version: "^5.5"
   lvgl/lvgl:
     version: "8.3.9"
+  lovyan03/LovyanGFX:
+    version: "^1.1.9"
