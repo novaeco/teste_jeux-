@@ -1,9 +1,10 @@
 #include "lvgl.h"
 #include "LGFX_S3_RGB.hpp"
+#include "lv_draw_gfx.h"
 
 /* LovyanGFX based draw callbacks */
 
-static void lv_draw_gfx_fill_cb(lv_draw_ctx_t *draw_ctx, const lv_draw_gfx_fill_dsc_t *dsc, const lv_area_t *area)
+void lv_draw_gfx_fill_cb(lv_draw_ctx_t *draw_ctx, const lv_draw_gfx_fill_dsc_t *dsc, const lv_area_t *area)
 {
     LV_UNUSED(draw_ctx);
     if(dsc->opa <= LV_OPA_MIN) return;
@@ -19,7 +20,7 @@ static void lv_draw_gfx_fill_cb(lv_draw_ctx_t *draw_ctx, const lv_draw_gfx_fill_
     }
 }
 
-static void lv_draw_gfx_blend_cb(lv_draw_ctx_t *draw_ctx, const lv_draw_gfx_blend_dsc_t *dsc)
+void lv_draw_gfx_blend_cb(lv_draw_ctx_t *draw_ctx, const lv_draw_gfx_blend_dsc_t *dsc)
 {
     LV_UNUSED(draw_ctx);
     if(dsc->opa <= LV_OPA_MIN) return;
