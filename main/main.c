@@ -35,6 +35,7 @@
 #include "sd.h"
 #include "sleep.h" // Sleep control interface
 #include "settings.h"     // Application settings
+#include "game_mode.h"
 
 static const char *TAG = "main"; // Tag for logging
 
@@ -83,12 +84,14 @@ static void start_game_mode(void) {
 
 static void menu_btn_game_cb(lv_event_t *e) {
   (void)e;
+  game_mode_set(GAME_MODE_SIMULATION);
   save_last_mode(APP_MODE_GAME);
   start_game_mode();
 }
 
 static void menu_btn_real_cb(lv_event_t *e) {
   (void)e;
+  game_mode_set(GAME_MODE_REAL);
   reptile_game_stop();
   save_last_mode(APP_MODE_REAL);
   reptile_real_start(panel_handle, tp_handle);
