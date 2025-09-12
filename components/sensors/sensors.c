@@ -95,3 +95,15 @@ float sensors_read_humidity(void)
     uint16_t raw_hum = (data[3] << 8) | data[4];
     return 100.0f * ((float)raw_hum / 65535.0f);
 }
+
+void sensors_deinit(void)
+{
+    if (sht31_dev) {
+        i2c_master_bus_rm_device(sht31_dev);
+        sht31_dev = NULL;
+    }
+    if (tmp117_dev) {
+        i2c_master_bus_rm_device(tmp117_dev);
+        tmp117_dev = NULL;
+    }
+}

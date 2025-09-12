@@ -81,4 +81,6 @@ void reptile_water_gpio(void);
  */
 void reptile_heat_gpio(void);
 
+void reptile_actuators_deinit(void);
+
 #endif
