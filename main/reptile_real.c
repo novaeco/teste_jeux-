@@ -1,5 +1,5 @@
 #include "reptile_real.h"
-#include "sensors.h"
+#include "env_control.h"
 #include "gpio.h"
 #include "lvgl.h"
 #include "lvgl_port.h"
@@ -8,9 +8,8 @@
 #include "settings.h"
 #include <math.h>
 
-static void pump_task(void *arg);
-static void heat_task(void *arg);
 static void feed_task(void *arg);
+static void env_state_cb(const reptile_env_state_t *state, void *ctx);
 
 static lv_obj_t *screen;
 static lv_obj_t *label_temp;
@@ -18,98 +17,35 @@ static lv_obj_t *label_hum;
 static lv_obj_t *label_pump;
 static lv_obj_t *label_heat;
 static lv_obj_t *label_feed;
-static lv_timer_t *update_timer;
-static volatile bool pump_running;
-static volatile bool heat_running;
 static volatile bool feed_running;
-static bool pump_auto_active;
-static bool heat_auto_active;
-static TaskHandle_t pump_task_handle;
-static TaskHandle_t heat_task_handle;
 static TaskHandle_t feed_task_handle;
+static reptile_env_state_t s_env_state;
 
 extern lv_obj_t *menu_screen;
 
 static void update_status_labels(void) {
-  float temp = sensors_read_temperature();
-  float hum = sensors_read_humidity();
-  if (isnan(temp))
+  if (isnan(s_env_state.temperature))
     lv_label_set_text(label_temp, "Temp\u00e9rature: N/A");
   else
-    lv_label_set_text_fmt(label_temp, "Temp\u00e9rature: %.1f \u00b0C", temp);
-  if (isnan(hum))
+    lv_label_set_text_fmt(label_temp, "Temp\u00e9rature: %.1f \u00b0C", s_env_state.temperature);
+  if (isnan(s_env_state.humidity))
     lv_label_set_text(label_hum, "Humidit\u00e9: N/A");
   else
-    lv_label_set_text_fmt(label_hum, "Humidit\u00e9: %.1f %%", hum);
-  lv_label_set_text(label_pump,
-                    pump_running    ? "Pompe: ON" :
-                    pump_auto_active? "Pompe: AUTO" : "Pompe: OFF");
-  lv_label_set_text(label_heat,
-                    heat_running    ? "Chauffage: ON" :
-                    heat_auto_active? "Chauffage: AUTO" : "Chauffage: OFF");
+    lv_label_set_text_fmt(label_hum, "Humidit\u00e9: %.1f %%", s_env_state.humidity);
+  lv_label_set_text(label_pump, s_env_state.pumping ? "Pompe: ON" : "Pompe: OFF");
+  lv_label_set_text(label_heat, s_env_state.heating ? "Chauffage: ON" : "Chauffage: OFF");
   lv_label_set_text(label_feed, feed_running ? "Nourrissage: ON" : "Nourrissage: OFF");
 }
 
-static void sensor_timer_cb(lv_timer_t *t) {
-  (void)t;
-
-  float temp = sensors_read_temperature();
-  float hum = sensors_read_humidity();
-
-  /* Gestion du chauffage avec hystérésis ±1 °C */
-  if (temp <= g_settings.temp_threshold - 1) {
-    heat_auto_active = true;
-  } else if (temp >= g_settings.temp_threshold + 1) {
-    heat_auto_active = false;
+static void env_state_cb(const reptile_env_state_t *state, void *ctx) {
+  (void)ctx;
+  s_env_state = *state;
+  if (lvgl_port_lock(-1)) {
+    update_status_labels();
+    lvgl_port_unlock();
   }
-  if (heat_auto_active && !heat_running)
-    xTaskCreate(heat_task, "heat_task", 2048, NULL, 5, &heat_task_handle);
-
-  /* Gestion de l'humidité avec hystérésis ±5 % HR */
-  if (hum <= g_settings.humidity_threshold - 5) {
-    pump_auto_active = true;
-  } else if (hum >= g_settings.humidity_threshold + 5) {
-    pump_auto_active = false;
-  }
-  if (pump_auto_active && !pump_running)
-    xTaskCreate(pump_task, "pump_task", 2048, NULL, 5, &pump_task_handle);
-
-  update_status_labels();
 }
 
-static void pump_task(void *arg) {
-  (void)arg;
-  pump_running = true;
-  if (lvgl_port_lock(-1)) {
-    update_status_labels();
-    lvgl_port_unlock();
-  }
-  reptile_water_gpio();
-  pump_running = false;
-  if (lvgl_port_lock(-1)) {
-    update_status_labels();
-    lvgl_port_unlock();
-  }
-  pump_task_handle = NULL;
-  vTaskDelete(NULL);
-}
-
-static void heat_task(void *arg) {
-  (void)arg;
-  heat_running = true;
-  if (lvgl_port_lock(-1)) {
-    update_status_labels();
-    lvgl_port_unlock();
-  }
-  reptile_heat_gpio();
-  heat_running = false;
-  if (lvgl_port_lock(-1)) {
-    update_status_labels();
-    lvgl_port_unlock();
-  }
-  heat_task_handle = NULL;
-  vTaskDelete(NULL);
-}
 
 static void feed_task(void *arg) {
   (void)arg;
@@ -130,14 +66,12 @@ static void feed_task(void *arg) {
 
 static void pump_btn_cb(lv_event_t *e) {
   (void)e;
-  if (!pump_running)
-    xTaskCreate(pump_task, "pump_task", 2048, NULL, 5, &pump_task_handle);
+  reptile_env_manual_pump();
 }
 
 static void heat_btn_cb(lv_event_t *e) {
   (void)e;
-  if (!heat_running)
-    xTaskCreate(heat_task, "heat_task", 2048, NULL, 5, &heat_task_handle);
+  reptile_env_manual_heat();
 }
 
 static void feed_btn_cb(lv_event_t *e) {
@@ -148,33 +82,17 @@ static void feed_btn_cb(lv_event_t *e) {
 
 static void menu_btn_cb(lv_event_t *e) {
   (void)e;
-  // Stop regulation tasks and ensure hardware is off
-  if (pump_task_handle) {
-    vTaskDelete(pump_task_handle);
-    pump_task_handle = NULL;
-  }
-  if (heat_task_handle) {
-    vTaskDelete(heat_task_handle);
-    heat_task_handle = NULL;
-  }
+  reptile_env_stop();
   if (feed_task_handle) {
     vTaskDelete(feed_task_handle);
     feed_task_handle = NULL;
   }
-  pump_running = false;
-  heat_running = false;
   feed_running = false;
-  pump_auto_active = false;
-  heat_auto_active = false;
   DEV_Digital_Write(WATER_PUMP_PIN, 0);
   DEV_Digital_Write(HEAT_RES_PIN, 0);
   DEV_Digital_Write(SERVO_FEED_PIN, 0);
 
   if (lvgl_port_lock(-1)) {
-    if (update_timer) {
-      lv_timer_del(update_timer);
-      update_timer = NULL;
-    }
     lv_scr_load(menu_screen);
     if (screen) {
       lv_obj_del(screen);
@@ -187,8 +105,6 @@ static void menu_btn_cb(lv_event_t *e) {
 void reptile_real_start(esp_lcd_panel_handle_t panel, esp_lcd_touch_handle_t tp) {
   (void)panel;
   (void)tp;
-
-  sensors_init();
 
   if (!lvgl_port_lock(-1))
     return;
@@ -235,9 +151,19 @@ void reptile_real_start(esp_lcd_panel_handle_t panel, esp_lcd_touch_handle_t tp)
   lv_obj_center(lbl);
   lv_obj_add_event_cb(btn_menu, menu_btn_cb, LV_EVENT_CLICKED, NULL);
 
+  s_env_state.temperature = NAN;
+  s_env_state.humidity = NAN;
+  s_env_state.heating = false;
+  s_env_state.pumping = false;
+  feed_running = false;
   update_status_labels();
-  update_timer = lv_timer_create(sensor_timer_cb, 1000, NULL);
   lv_disp_load_scr(screen);
   lvgl_port_unlock();
+
+  reptile_env_thresholds_t thr = {
+      .temp_setpoint = g_settings.temp_threshold,
+      .humidity_setpoint = g_settings.humidity_threshold,
+  };
+  reptile_env_start(&thr, env_state_cb, NULL);
 }
 
