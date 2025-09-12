@@ -126,7 +126,7 @@ esp_err_t lvgl_port_init(esp_lcd_panel_handle_t lcd_handle, esp_lcd_touch_handle
 
     lv_display_t *disp = display_init(lcd_handle);
     assert(disp);
-    lv_draw_gfx_init(&disp->draw_ctx, &lgfx_draw_ctx);
+    lv_draw_gfx_init(disp, &lgfx_draw_ctx);
 
     if (tp_handle) {
         lv_indev_t *indev = indev_init(tp_handle);

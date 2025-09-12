@@ -1,6 +1,8 @@
 #include "lvgl.h"
 #include "LGFX_S3_RGB.hpp"
 #include "lv_draw_gfx.h"
+#include "lvgl/src/display/lv_display_private.h"
+#include <string.h>
 
 /* LovyanGFX based draw callbacks */
 
@@ -36,6 +38,16 @@ void lv_draw_gfx_blend_cb(lv_draw_ctx_t *draw_ctx, const lv_draw_gfx_blend_dsc_t
         gfx.pushImageDMA(area->x1, area->y1, w, h, src, dsc->opa);
     }
     gfx.waitDMA();
+}
+
+void lv_draw_gfx_init(lv_display_t *disp, lv_draw_gfx_t *gfx)
+{
+    lv_draw_ctx_t *draw_ctx = lv_display_get_draw_ctx(disp);
+    LV_ASSERT(draw_ctx);
+    LV_ASSERT(gfx);
+
+    memcpy(&gfx->base, draw_ctx, sizeof(lv_draw_ctx_t));
+    lv_display_set_draw_ctx(disp, &gfx->base);
 }
 
 lv_draw_gfx_t lgfx_draw_ctx = {
