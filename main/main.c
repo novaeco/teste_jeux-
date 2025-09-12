@@ -71,6 +71,7 @@ void reset_last_mode(void) { save_last_mode(0); }
 static void sleep_timer_cb(lv_timer_t *timer);
 
 static void start_game_mode(void) {
+  reptile_game_stop();
   reptile_game_start(panel_handle, tp_handle);
   logging_init(reptile_get_state);
   if (!sleep_timer)
@@ -86,12 +87,14 @@ static void menu_btn_game_cb(lv_event_t *e) {
 
 static void menu_btn_real_cb(lv_event_t *e) {
   (void)e;
+  reptile_game_stop();
   save_last_mode(APP_MODE_REAL);
   reptile_real_start(panel_handle, tp_handle);
 }
 
 static void menu_btn_settings_cb(lv_event_t *e) {
   (void)e;
+  reptile_game_stop();
   save_last_mode(APP_MODE_SETTINGS);
   settings_screen_show();
 }
