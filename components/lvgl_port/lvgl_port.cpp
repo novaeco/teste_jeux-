@@ -8,10 +8,12 @@
 #include "lvgl_port.h"
 #include <LovyanGFX.hpp>
 #include "LGFX_S3_RGB.hpp"
+#include "lv_draw_gfx.h"
 
 static const char *TAG = "lv_port";
 static SemaphoreHandle_t lvgl_mux;
 static TaskHandle_t lvgl_task_handle = NULL;
+extern lv_draw_gfx_t lgfx_draw_ctx;
 
 /**
  * @brief Flush callback: copy rendered area to the display and notify LVGL.
@@ -123,6 +125,7 @@ esp_err_t lvgl_port_init(esp_lcd_panel_handle_t lcd_handle, esp_lcd_touch_handle
 
     lv_display_t *disp = display_init(lcd_handle);
     assert(disp);
+    lv_draw_gfx_init(&disp->draw_ctx, &lgfx_draw_ctx);
 
     if (tp_handle) {
         lv_indev_t *indev = indev_init(tp_handle);
