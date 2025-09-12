@@ -4,29 +4,45 @@
 #include "freertos/task.h"
 #include "esp_log.h"
 #include <math.h>
+#include <stdbool.h>
 
 #define SHT31_ADDR 0x44
 #define TMP117_ADDR 0x48
 
 static const char *TAG = "sensors";
-static i2c_master_dev_handle_t sht31_dev;
-static i2c_master_dev_handle_t tmp117_dev;
+static i2c_master_dev_handle_t sht31_dev = NULL;
+static i2c_master_dev_handle_t tmp117_dev = NULL;
 
 esp_err_t sensors_init(void)
 {
     DEV_I2C_Port port = DEV_I2C_Init();
     (void)port; // bus handle kept internally
 
-    esp_err_t ret = DEV_I2C_Set_Slave_Addr(&sht31_dev, SHT31_ADDR);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to set SHT31 address: %s", esp_err_to_name(ret));
-        return ESP_FAIL;
+    bool any_device = false;
+    if (DEV_I2C_Probe(SHT31_ADDR) == ESP_OK) {
+        esp_err_t ret = DEV_I2C_Set_Slave_Addr(&sht31_dev, SHT31_ADDR);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to set SHT31 address: %s", esp_err_to_name(ret));
+            return ESP_FAIL;
+        }
+        any_device = true;
+    } else {
+        sht31_dev = NULL;
     }
 
-    ret = DEV_I2C_Set_Slave_Addr(&tmp117_dev, TMP117_ADDR);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to set TMP117 address: %s", esp_err_to_name(ret));
-        return ESP_FAIL;
+    if (DEV_I2C_Probe(TMP117_ADDR) == ESP_OK) {
+        esp_err_t ret = DEV_I2C_Set_Slave_Addr(&tmp117_dev, TMP117_ADDR);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to set TMP117 address: %s", esp_err_to_name(ret));
+            return ESP_FAIL;
+        }
+        any_device = true;
+    } else {
+        tmp117_dev = NULL;
+    }
+
+    if (!any_device) {
+        return ESP_ERR_NOT_FOUND;
     }
 
     return ESP_OK;
