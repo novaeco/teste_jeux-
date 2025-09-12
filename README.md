@@ -31,6 +31,54 @@ compile le projet, programme le microcontrôleur puis ouvre le moniteur série.
   de faciliter le débogage. La veille peut ensuite être réactivée ou désactivée à
   l'exécution via le bouton **Veille ON/OFF** de l'interface.
 
+## Menu de démarrage et modes d'exécution
+Au reset, le firmware affiche un menu minimaliste permettant de choisir entre deux modes :
+
+- **Simulation** : emploi des pilotes `sensors_sim` et `gpio_sim`. Ces implémentations génèrent
+  des valeurs factices ou celles injectées par l'API de simulation et *n'accèdent jamais au
+  matériel*.
+- **Réel** : activation des pilotes `sensors_real` et `gpio_real` qui dialoguent directement avec
+  les capteurs I²C et les broches GPIO.
+
+La sélection est persistée pour la session suivante afin de relancer automatiquement le mode
+précédent.
+
+### Schéma de dépendances
+```mermaid
+flowchart TD
+    App[Application] --> Sensors
+    App --> GPIO
+    Sensors --> sensors_real[Capteurs réels]
+    Sensors --> sensors_sim[Capteurs simulés]
+    GPIO --> gpio_real[GPIO réels]
+    GPIO --> gpio_sim[GPIO simulés]
+    sensors_real --> HW[(Matériel)]
+    gpio_real --> HW
+    sensors_sim -.->|aucun accès| HW
+    gpio_sim -.->|aucun accès| HW
+```
+
+### Chemins de sauvegarde et tests `sim_api`
+Le module de logique reptile enregistre son état sur la carte SD dans des emplacements distincts :
+
+- **Simulation** : `/sd/sim/reptile_state.bin`
+- **Réel** : `/sd/real/reptile_state.bin`
+
+Pour valider les pilotes simulés depuis un PC, l'en-tête `sim_api.h` expose des points d'injection
+(`sensors_sim_set_temperature`, `sensors_sim_set_humidity`) et d'observation
+(`gpio_sim_get_heater_state`, `gpio_sim_get_pump_state`). Un test de bout en bout peut être exécuté
+en mode simulation :
+
+```sh
+gcc -DGAME_MODE_SIMULATION \
+    tests/sim_reptile.c \
+    components/sensors/sensors.c components/sensors/sensors_sim.c \
+    components/gpio/gpio.c components/gpio/gpio_sim.c \
+    -Icomponents/sim_api -Icomponents/sensors -Icomponents/gpio \
+    -o sim_reptile && ./sim_reptile
+```
+
+
 ## Structure des dossiers
 ```
 .
