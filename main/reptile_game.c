@@ -299,7 +299,9 @@ static void sleep_btn_event_cb(lv_event_t *e) {
 }
 
 void reptile_game_stop(void) {
+  logging_pause();
   sleep_set_enabled(false);
+  soothe_time_ms = 0;
   if (life_timer) {
     lv_timer_del(life_timer);
     life_timer = NULL;
@@ -316,7 +318,6 @@ void reptile_game_stop(void) {
     lv_obj_del(screen_stats);
     screen_stats = NULL;
   }
-  logging_pause();
 }
 
 static void menu_btn_event_cb(lv_event_t *e) {
