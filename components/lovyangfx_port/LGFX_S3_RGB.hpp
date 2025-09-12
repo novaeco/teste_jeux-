@@ -1,5 +1,7 @@
 #pragma once
 
+#define LGFX_USE_V1
+#define LGFX_RGB_PARALLEL
 #include <LovyanGFX.hpp>
 #include "rgb_lcd_port.h"
 

@@ -6,6 +6,8 @@
 #include "esp_log.h"
 #include "esp_heap_caps.h"
 #include "lvgl_port.h"
+#define LGFX_USE_V1
+#define LGFX_RGB_PARALLEL
 #include <LovyanGFX.hpp>
 #include "LGFX_S3_RGB.hpp"
 #include "lv_draw_gfx.h"
