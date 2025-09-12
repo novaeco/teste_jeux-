@@ -10,6 +10,7 @@ extern "C" {
 esp_err_t sensors_init(void);
 float sensors_read_temperature(void);
 float sensors_read_humidity(void);
+void sensors_deinit(void);
 
 #ifdef __cplusplus
 }

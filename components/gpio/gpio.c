@@ -137,3 +137,14 @@ void reptile_heat_gpio(void)
     vTaskDelay(pdMS_TO_TICKS(5000));
     gpio_set_level(HEAT_RES_PIN, 0);
 }
+
+void reptile_actuators_deinit(void)
+{
+    DEV_Digital_Write(WATER_PUMP_PIN, 0);
+    DEV_Digital_Write(HEAT_RES_PIN, 0);
+    DEV_Digital_Write(SERVO_FEED_PIN, 0);
+
+    DEV_GPIO_Mode(WATER_PUMP_PIN, GPIO_MODE_INPUT);
+    DEV_GPIO_Mode(HEAT_RES_PIN, GPIO_MODE_INPUT);
+    DEV_GPIO_Mode(SERVO_FEED_PIN, GPIO_MODE_INPUT);
+}

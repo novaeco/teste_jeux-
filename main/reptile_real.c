@@ -1,6 +1,7 @@
 #include "reptile_real.h"
 #include "env_control.h"
 #include "gpio.h"
+#include "sensors.h"
 #include "lvgl.h"
 #include "lvgl_port.h"
 #include "freertos/FreeRTOS.h"
@@ -83,14 +84,13 @@ static void feed_btn_cb(lv_event_t *e) {
 static void menu_btn_cb(lv_event_t *e) {
   (void)e;
   reptile_env_stop();
+  sensors_deinit();
   if (feed_task_handle) {
     vTaskDelete(feed_task_handle);
     feed_task_handle = NULL;
   }
   feed_running = false;
-  DEV_Digital_Write(WATER_PUMP_PIN, 0);
-  DEV_Digital_Write(HEAT_RES_PIN, 0);
-  DEV_Digital_Write(SERVO_FEED_PIN, 0);
+  reptile_actuators_deinit();
 
   if (lvgl_port_lock(-1)) {
     lv_scr_load(menu_screen);
