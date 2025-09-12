@@ -94,27 +94,29 @@ static void menu_btn_real_cb(lv_event_t *e) {
   (void)e;
   game_mode_set(GAME_MODE_REAL);
   reptile_game_stop();
-  esp_err_t err = sensors_init();
-  if (err == ESP_ERR_NOT_FOUND) {
-    lv_obj_t *mbox = lv_msgbox_create(NULL);
-    lv_msgbox_add_title(mbox, "Erreur");
-    lv_msgbox_add_text(mbox, "Capteur non connecté");
-    lv_msgbox_add_close_button(mbox);
-    lv_obj_center(mbox);
-    return;
+  if (game_mode_get() == GAME_MODE_REAL) {
+    esp_err_t err = sensors_init();
+    if (err == ESP_ERR_NOT_FOUND) {
+      lv_obj_t *mbox = lv_msgbox_create(NULL);
+      lv_msgbox_add_title(mbox, "Erreur");
+      lv_msgbox_add_text(mbox, "Capteur non connecté");
+      lv_msgbox_add_close_button(mbox);
+      lv_obj_center(mbox);
+      return;
+    }
+    err = reptile_actuators_init();
+    if (err == ESP_ERR_NOT_FOUND) {
+      sensors_deinit();
+      lv_obj_t *mbox = lv_msgbox_create(NULL);
+      lv_msgbox_add_title(mbox, "Erreur");
+      lv_msgbox_add_text(mbox, "Capteur non connecté");
+      lv_msgbox_add_close_button(mbox);
+      lv_obj_center(mbox);
+      return;
+    }
+    save_last_mode(APP_MODE_REAL);
+    reptile_real_start(panel_handle, tp_handle);
   }
-  err = reptile_actuators_init();
-  if (err == ESP_ERR_NOT_FOUND) {
-    sensors_deinit();
-    lv_obj_t *mbox = lv_msgbox_create(NULL);
-    lv_msgbox_add_title(mbox, "Erreur");
-    lv_msgbox_add_text(mbox, "Capteur non connecté");
-    lv_msgbox_add_close_button(mbox);
-    lv_obj_center(mbox);
-    return;
-  }
-  save_last_mode(APP_MODE_REAL);
-  reptile_real_start(panel_handle, tp_handle);
 }
 
 static void menu_btn_settings_cb(lv_event_t *e) {
@@ -393,7 +395,10 @@ void app_main() {
       start_game_mode();
       break;
     case APP_MODE_REAL:
-      reptile_real_start(panel_handle, tp_handle);
+      game_mode_set(GAME_MODE_REAL);
+      if (game_mode_get() == GAME_MODE_REAL) {
+        reptile_real_start(panel_handle, tp_handle);
+      }
       break;
     case APP_MODE_SETTINGS:
       settings_screen_show();
