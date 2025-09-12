@@ -47,7 +47,14 @@ static void gpio_sim_deinit(void)
     memset(s_levels, 0, sizeof(s_levels));
 }
 
+static esp_err_t gpio_sim_init(void)
+{
+    memset(s_levels, 0, sizeof(s_levels));
+    return ESP_OK;
+}
+
 const actuator_driver_t gpio_sim_driver = {
+    .init = gpio_sim_init,
     .gpio_mode = gpio_sim_mode,
     .gpio_int = gpio_sim_int,
     .digital_write = gpio_sim_write,

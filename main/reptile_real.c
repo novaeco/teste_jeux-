@@ -26,11 +26,11 @@ extern lv_obj_t *menu_screen;
 
 static void update_status_labels(void) {
   if (isnan(s_env_state.temperature))
-    lv_label_set_text(label_temp, "Temp\u00e9rature: N/A");
+    lv_label_set_text(label_temp, "Temp\u00e9rature: Non connect\u00e9");
   else
     lv_label_set_text_fmt(label_temp, "Temp\u00e9rature: %.1f \u00b0C", s_env_state.temperature);
   if (isnan(s_env_state.humidity))
-    lv_label_set_text(label_hum, "Humidit\u00e9: N/A");
+    lv_label_set_text(label_hum, "Humidit\u00e9: Non connect\u00e9");
   else
     lv_label_set_text_fmt(label_hum, "Humidit\u00e9: %.1f %%", s_env_state.humidity);
   lv_label_set_text(label_pump, s_env_state.pumping ? "Pompe: ON" : "Pompe: OFF");

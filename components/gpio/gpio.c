@@ -14,6 +14,15 @@ static void gpio_select_driver(void)
     }
 }
 
+esp_err_t reptile_actuators_init(void)
+{
+    gpio_select_driver();
+    if (s_driver && s_driver->init) {
+        return s_driver->init();
+    }
+    return ESP_OK;
+}
+
 void DEV_GPIO_Mode(uint16_t Pin, uint16_t Mode)
 {
     gpio_select_driver();
