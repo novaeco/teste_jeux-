@@ -76,7 +76,7 @@ static void start_game_mode(void) {
   logging_init(reptile_get_state);
   if (!sleep_timer)
     sleep_timer = lv_timer_create(sleep_timer_cb, 120000, NULL);
-  sleep_set_enabled(g_settings.sleep_default);
+  settings_apply();
 }
 
 static void menu_btn_game_cb(lv_event_t *e) {
