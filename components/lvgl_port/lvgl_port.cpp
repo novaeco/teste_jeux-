@@ -13,7 +13,6 @@
 static const char *TAG = "lv_port";
 static SemaphoreHandle_t lvgl_mux;
 static TaskHandle_t lvgl_task_handle = NULL;
-extern lv_draw_gfx_t lgfx_draw_ctx;
 
 /**
  * @brief Flush callback: copy rendered area to the display and notify LVGL.
