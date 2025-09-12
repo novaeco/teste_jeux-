@@ -298,18 +298,30 @@ static void sleep_btn_event_cb(lv_event_t *e) {
   lv_label_set_text(lbl_sleep, sleep_is_enabled() ? "Veille ON" : "Veille OFF");
 }
 
+void reptile_game_stop(void) {
+  if (life_timer) {
+    lv_timer_del(life_timer);
+    life_timer = NULL;
+  }
+  if (action_timer) {
+    lv_timer_del(action_timer);
+    action_timer = NULL;
+  }
+  if (screen_main) {
+    lv_obj_del(screen_main);
+    screen_main = NULL;
+  }
+  if (screen_stats) {
+    lv_obj_del(screen_stats);
+    screen_stats = NULL;
+  }
+  logging_pause();
+}
+
 static void menu_btn_event_cb(lv_event_t *e) {
   (void)e;
   if (lvgl_port_lock(-1)) {
-    if (life_timer) {
-      lv_timer_del(life_timer);
-      life_timer = NULL;
-    }
-    if (action_timer) {
-      lv_timer_del(action_timer);
-      action_timer = NULL;
-    }
-    logging_pause();
+    reptile_game_stop();
     lv_scr_load(menu_screen);
     lvgl_port_unlock();
   }
