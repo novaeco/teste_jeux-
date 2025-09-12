@@ -14,9 +14,9 @@ void lv_draw_gfx_fill_cb(lv_draw_ctx_t *draw_ctx, const lv_draw_gfx_fill_dsc_t *
     const uint32_t color = lv_color_to32(dsc->color);
 
     if(dsc->opa >= LV_OPA_MAX) {
-        lgfx.fillRect(area->x1, area->y1, w, h, color);
+        gfx.fillRect(area->x1, area->y1, w, h, color);
     } else {
-        lgfx.fillRect(area->x1, area->y1, w, h, color, dsc->opa);
+        gfx.fillRect(area->x1, area->y1, w, h, color, dsc->opa);
     }
 }
 
@@ -31,11 +31,11 @@ void lv_draw_gfx_blend_cb(lv_draw_ctx_t *draw_ctx, const lv_draw_gfx_blend_dsc_t
     const uint16_t *src = (const uint16_t *)dsc->src_buf;
 
     if(dsc->opa >= LV_OPA_MAX) {
-        lgfx.pushImageDMA(area->x1, area->y1, w, h, src);
+        gfx.pushImageDMA(area->x1, area->y1, w, h, src);
     } else {
-        lgfx.pushImageDMA(area->x1, area->y1, w, h, src, dsc->opa);
+        gfx.pushImageDMA(area->x1, area->y1, w, h, src, dsc->opa);
     }
-    lgfx.waitDMA();
+    gfx.waitDMA();
 }
 
 lv_draw_gfx_t lgfx_draw_ctx = {

@@ -1,8 +1,8 @@
 #include "ui_sprite.h"
 
 static LGFX_Sprite s_sprites[2] = {
-    LGFX_Sprite(&lgfx),
-    LGFX_Sprite(&lgfx)
+    LGFX_Sprite(&gfx),
+    LGFX_Sprite(&gfx)
 };
 static int s_front = 0;
 static int s_back = 1;

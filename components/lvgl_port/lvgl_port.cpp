@@ -24,8 +24,8 @@ static void flush_callback(lv_display_t *disp, const lv_area_t *area, uint8_t *p
     int32_t width = area->x2 - area->x1 + 1;
     int32_t height = area->y2 - area->y1 + 1;
 
-    lgfx.pushImageDMA(offsetx1, offsety1, width, height, (const uint16_t *)px_map);
-    lgfx.waitDMA();
+    gfx.pushImageDMA(offsetx1, offsety1, width, height, (const uint16_t *)px_map);
+    gfx.waitDMA();
 
     lv_display_flush_ready(disp);
 }

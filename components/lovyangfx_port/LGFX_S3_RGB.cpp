@@ -1,6 +1,6 @@
 #include "LGFX_S3_RGB.hpp"
 
-LGFX_S3_RGB lgfx;
+LGFX_S3_RGB gfx;
 
 LGFX_S3_RGB::LGFX_S3_RGB()
 {
