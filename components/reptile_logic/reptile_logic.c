@@ -5,6 +5,7 @@
 #include "nvs_flash.h"
 #include "sensors.h"
 #include <stdbool.h>
+#include <math.h>
 
 #define NVS_NAMESPACE "reptile"
 
@@ -49,13 +50,18 @@ void reptile_update(reptile_t *r, uint32_t elapsed_ms) {
   if (s_sensors_ready) {
     float temp = sensors_read_temperature();
     float hum = sensors_read_humidity();
-    if (hum < 0.f)
-      hum = 0.f;
-    else if (hum > 100.f)
-      hum = 100.f;
-    r->temperature = (uint32_t)temp;
-    r->humidite = (uint32_t)hum;
-    reptile_save(r);
+
+    if (!isnan(temp)) {
+      r->temperature = (uint32_t)temp;
+    }
+
+    if (!isnan(hum)) {
+      if (hum < 0.f)
+        hum = 0.f;
+      else if (hum > 100.f)
+        hum = 100.f;
+      r->humidite = (uint32_t)hum;
+    }
   } else {
     if (!log_once) {
       ESP_LOGW(TAG, "Capteurs indisponibles");

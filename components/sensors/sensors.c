@@ -50,36 +50,41 @@ esp_err_t sensors_init(void)
 
 float sensors_read_temperature(void)
 {
-    if (tmp117_dev == NULL || sht31_dev == NULL) {
-        ESP_LOGE(TAG, "Sensor handle is NULL");
+    float sum = 0.0f;
+    int count = 0;
+
+    if (tmp117_dev) {
+        uint16_t raw_tmp = 0;
+        if (DEV_I2C_Read_Word(tmp117_dev, 0x00, &raw_tmp) == ESP_OK) {
+            sum += (int16_t)raw_tmp * 0.0078125f;
+            count++;
+        }
+    }
+
+    if (sht31_dev) {
+        uint8_t cmd[2] = {0x2C, 0x06};
+        if (DEV_I2C_Write_Nbyte(sht31_dev, cmd, 2) == ESP_OK) {
+            vTaskDelay(pdMS_TO_TICKS(15));
+            uint8_t data[6] = {0};
+            if (DEV_I2C_Read_Nbyte(sht31_dev, 0x00, data, 6) == ESP_OK) {
+                uint16_t raw_sht = (data[0] << 8) | data[1];
+                sum += -45.0f + 175.0f * ((float)raw_sht / 65535.0f);
+                count++;
+            }
+        }
+    }
+
+    if (count == 0) {
+        ESP_LOGW(TAG, "No temperature sensor available");
         return NAN;
     }
 
-    uint16_t raw_tmp = 0;
-    if (DEV_I2C_Read_Word(tmp117_dev, 0x00, &raw_tmp) != ESP_OK) {
-        return NAN;
-    }
-    float tmp117 = (int16_t)raw_tmp * 0.0078125f;
-
-    uint8_t cmd[2] = {0x2C, 0x06};
-    if (DEV_I2C_Write_Nbyte(sht31_dev, cmd, 2) != ESP_OK) {
-        return NAN;
-    }
-    vTaskDelay(pdMS_TO_TICKS(15));
-    uint8_t data[6] = {0};
-    if (DEV_I2C_Read_Nbyte(sht31_dev, 0x00, data, 6) != ESP_OK) {
-        return NAN;
-    }
-    uint16_t raw_sht = (data[0] << 8) | data[1];
-    float sht31 = -45.0f + 175.0f * ((float)raw_sht / 65535.0f);
-
-    return (tmp117 + sht31) / 2.0f;
+    return sum / (float)count;
 }
 
 float sensors_read_humidity(void)
 {
     if (sht31_dev == NULL) {
-        ESP_LOGE(TAG, "Sensor handle is NULL");
         return NAN;
     }
 
