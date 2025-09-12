@@ -52,6 +52,9 @@ enum {
   APP_MODE_SETTINGS = 3,
 };
 
+// GPIO used at boot to ignore the persisted last mode when held low
+#define MODE_OVERRIDE_BTN GPIO_NUM_0
+
 static void save_last_mode(uint8_t mode) {
   nvs_handle_t nvs;
   if (nvs_open("cfg", NVS_READWRITE, &nvs) == ESP_OK) {
@@ -60,6 +63,9 @@ static void save_last_mode(uint8_t mode) {
     nvs_close(nvs);
   }
 }
+
+// Public helper to reset the stored mode in NVS
+void reset_last_mode(void) { save_last_mode(0); }
 
 static void reptile_real_start(esp_lcd_panel_handle_t panel,
                                esp_lcd_touch_handle_t tp) {
@@ -348,6 +354,14 @@ void app_main() {
     if (nvs_open("cfg", NVS_READWRITE, &nvs) == ESP_OK) {
       nvs_get_u8(nvs, "last_mode", &last_mode);
       nvs_close(nvs);
+    }
+
+    // If override button is held during boot, ignore stored mode
+    gpio_reset_pin(MODE_OVERRIDE_BTN);
+    gpio_set_direction(MODE_OVERRIDE_BTN, GPIO_MODE_INPUT);
+    gpio_pullup_en(MODE_OVERRIDE_BTN);
+    if (gpio_get_level(MODE_OVERRIDE_BTN) == 0) {
+      last_mode = 0;
     }
 
     switch (last_mode) {
