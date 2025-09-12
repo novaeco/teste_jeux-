@@ -9,7 +9,8 @@ typedef enum {
     GAME_MODE_SIMULATION
 } game_mode_t;
 
-extern game_mode_t g_game_mode;
+void game_mode_set(game_mode_t mode);
+game_mode_t game_mode_get(void);
 
 #ifdef __cplusplus
 }
