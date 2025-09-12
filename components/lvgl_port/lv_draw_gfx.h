@@ -30,7 +30,7 @@ typedef struct {
     lv_draw_gfx_blend_cb_t blend_cb;
 } lv_draw_gfx_t;
 
-void lv_draw_gfx_init(lv_draw_ctx_t *draw_ctx, lv_draw_gfx_t *gfx);
+void lv_draw_gfx_init(lv_display_t *disp, lv_draw_gfx_t *gfx);
 void lv_draw_gfx_fill_cb(lv_draw_ctx_t *draw_ctx, const lv_draw_gfx_fill_dsc_t *dsc, const lv_area_t *area);
 void lv_draw_gfx_blend_cb(lv_draw_ctx_t *draw_ctx, const lv_draw_gfx_blend_dsc_t *dsc);
 
