@@ -3,6 +3,7 @@
 #include "esp_random.h"
 #include "gpio.h"
 #include "sensors.h"
+#include "game_mode.h"
 #include <stdbool.h>
 #include <math.h>
 #include <stdio.h>
@@ -60,7 +61,7 @@ void reptile_update(reptile_t *r, uint32_t elapsed_ms) {
   r->eau = (r->eau > decay) ? (r->eau - decay) : 0;
   r->humeur = (r->humeur > decay) ? (r->humeur - decay) : 0;
 
-  if (s_simulation_mode) {
+  if (game_mode_get() == GAME_MODE_SIMULATION) {
     uint32_t randv = esp_random();
     float temp = 26.0f + (float)(randv % 80) / 10.0f; /* 26.0 - 33.9 */
     randv = esp_random();
@@ -203,5 +204,5 @@ reptile_event_t reptile_check_events(reptile_t *r) {
 }
 
 bool reptile_sensors_available(void) {
-  return (!s_simulation_mode) && s_sensors_ready;
+  return (game_mode_get() != GAME_MODE_SIMULATION) && s_sensors_ready;
 }
