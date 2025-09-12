@@ -16,12 +16,14 @@ static lv_obj_t *bar_faim;
 static lv_obj_t *bar_eau;
 static lv_obj_t *bar_temp;
 static lv_obj_t *bar_humeur;
+static lv_obj_t *bar_humidite;
 static lv_obj_t *img_reptile;
 static bool sprite_is_happy;
 static lv_obj_t *label_stat_faim;
 static lv_obj_t *label_stat_eau;
 static lv_obj_t *label_stat_temp;
 static lv_obj_t *label_stat_humeur;
+static lv_obj_t *label_stat_humidite;
 static lv_obj_t *lbl_sleep;
 extern lv_obj_t *menu_screen;
 
@@ -317,6 +319,7 @@ static void ui_update_main(void) {
   lv_bar_set_value(bar_faim, reptile.faim, LV_ANIM_ON);
   lv_bar_set_value(bar_eau, reptile.eau, LV_ANIM_ON);
   lv_bar_set_value(bar_temp, reptile.temperature, LV_ANIM_ON);
+  lv_bar_set_value(bar_humidite, reptile.humidite, LV_ANIM_ON);
   lv_bar_set_value(bar_humeur, reptile.humeur, LV_ANIM_ON);
   update_sprite();
 }
@@ -326,10 +329,13 @@ static void ui_update_stats(void) {
   lv_label_set_text_fmt(label_stat_eau, "Eau: %" PRIu32, reptile.eau);
   lv_label_set_text_fmt(label_stat_temp, "Température: %" PRIu32,
                         reptile.temperature);
+  lv_label_set_text_fmt(label_stat_humidite, "Humidité: %" PRIu32,
+                        reptile.humidite);
   lv_label_set_text_fmt(label_stat_humeur, "Humeur: %" PRIu32, reptile.humeur);
   set_bar_color(bar_faim, reptile.faim, 100);
   set_bar_color(bar_eau, reptile.eau, 100);
   set_bar_color(bar_temp, reptile.temperature, 50);
+  set_bar_color(bar_humidite, reptile.humidite, 100);
   set_bar_color(bar_humeur, reptile.humeur, 100);
 }
 
@@ -381,11 +387,22 @@ void reptile_game_start(esp_lcd_panel_handle_t panel,
   lv_label_set_text(label_temp, "Température");
   lv_obj_align_to(label_temp, bar_temp, LV_ALIGN_OUT_TOP_LEFT, 0, -5);
 
+  /* Humidity bar */
+  bar_humidite = lv_bar_create(screen_main);
+  lv_bar_set_range(bar_humidite, 0, 100);
+  lv_obj_set_size(bar_humidite, 200, 20);
+  lv_obj_align(bar_humidite, LV_ALIGN_LEFT_MID, 10, 80);
+  lv_bar_set_value(bar_humidite, 50, LV_ANIM_OFF);
+  lv_obj_t *label_humidite = lv_label_create(screen_main);
+  lv_obj_add_style(label_humidite, &style_font24, 0);
+  lv_label_set_text(label_humidite, "Humidité");
+  lv_obj_align_to(label_humidite, bar_humidite, LV_ALIGN_OUT_TOP_LEFT, 0, -5);
+
   /* Mood bar */
   bar_humeur = lv_bar_create(screen_main);
   lv_bar_set_range(bar_humeur, 0, 100);
   lv_obj_set_size(bar_humeur, 200, 20);
-  lv_obj_align(bar_humeur, LV_ALIGN_LEFT_MID, 10, 80);
+  lv_obj_align(bar_humeur, LV_ALIGN_LEFT_MID, 10, 120);
   lv_bar_set_value(bar_humeur, 100, LV_ANIM_OFF);
   lv_obj_t *label_humeur = lv_label_create(screen_main);
   lv_obj_add_style(label_humeur, &style_font24, 0);
@@ -475,10 +492,13 @@ void reptile_game_start(esp_lcd_panel_handle_t panel,
   label_stat_temp = lv_label_create(screen_stats);
   lv_obj_add_style(label_stat_temp, &style_font24, 0);
   lv_obj_align(label_stat_temp, LV_ALIGN_TOP_LEFT, 10, 90);
+  label_stat_humidite = lv_label_create(screen_stats);
+  lv_obj_add_style(label_stat_humidite, &style_font24, 0);
+  lv_obj_align(label_stat_humidite, LV_ALIGN_TOP_LEFT, 10, 130);
 
   label_stat_humeur = lv_label_create(screen_stats);
   lv_obj_add_style(label_stat_humeur, &style_font24, 0);
-  lv_obj_align(label_stat_humeur, LV_ALIGN_TOP_LEFT, 10, 130);
+  lv_obj_align(label_stat_humeur, LV_ALIGN_TOP_LEFT, 10, 170);
 
   lv_obj_t *btn_back = lv_btn_create(screen_stats);
   lv_obj_set_size(btn_back, 160, 40);

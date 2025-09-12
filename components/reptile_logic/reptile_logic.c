@@ -27,6 +27,7 @@ esp_err_t reptile_init(reptile_t *r) {
   r->faim = 100;
   r->eau = 100;
   r->temperature = 30;
+  r->humidite = 50;
   r->humeur = 100;
   r->event = REPTILE_EVENT_NONE;
   r->last_update = time(NULL);
@@ -47,7 +48,9 @@ void reptile_update(reptile_t *r, uint32_t elapsed_ms) {
 
   if (s_sensors_ready) {
     float temp = sensors_read_temperature();
+    float hum = sensors_read_humidity();
     r->temperature = (uint32_t)temp;
+    r->humidite = (uint32_t)hum;
   } else {
     if (!log_once) {
       ESP_LOGW(TAG, "Capteurs indisponibles");
