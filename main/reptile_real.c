@@ -6,6 +6,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "settings.h"
+#include <math.h>
 
 static void pump_task(void *arg);
 static void heat_task(void *arg);
@@ -32,8 +33,14 @@ extern lv_obj_t *menu_screen;
 static void update_status_labels(void) {
   float temp = sensors_read_temperature();
   float hum = sensors_read_humidity();
-  lv_label_set_text_fmt(label_temp, "Temp\u00e9rature: %.1f \u00b0C", temp);
-  lv_label_set_text_fmt(label_hum, "Humidit\u00e9: %.1f %%", hum);
+  if (isnan(temp))
+    lv_label_set_text(label_temp, "Temp\u00e9rature: N/A");
+  else
+    lv_label_set_text_fmt(label_temp, "Temp\u00e9rature: %.1f \u00b0C", temp);
+  if (isnan(hum))
+    lv_label_set_text(label_hum, "Humidit\u00e9: N/A");
+  else
+    lv_label_set_text_fmt(label_hum, "Humidit\u00e9: %.1f %%", hum);
   lv_label_set_text(label_pump,
                     pump_running    ? "Pompe: ON" :
                     pump_auto_active? "Pompe: AUTO" : "Pompe: OFF");
@@ -181,18 +188,7 @@ void reptile_real_start(esp_lcd_panel_handle_t panel, esp_lcd_touch_handle_t tp)
   (void)panel;
   (void)tp;
 
-  esp_err_t err = sensors_init();
-  if (err != ESP_OK) {
-    lv_obj_t *mbox = lv_msgbox_create(NULL);
-    lv_msgbox_add_title(mbox, "Capteurs");
-    lv_msgbox_add_text(mbox, "Aucun capteur d\u00e9tect\u00e9. Connectez-les puis red\u00e9marrez.");
-    lv_msgbox_add_btns(mbox, (const char *[]){"Menu", ""}, 0);
-    lv_obj_center(mbox);
-    lv_obj_add_event_cb(mbox, [](lv_event_t *e){
-      lv_scr_load(menu_screen);
-    }, LV_EVENT_VALUE_CHANGED, NULL);
-    return;
-  }
+  sensors_init();
 
   if (!lvgl_port_lock(-1))
     return;
